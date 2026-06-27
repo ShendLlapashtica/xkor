@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { ChevronDown, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronDown, RotateCcw, SlidersHorizontal } from 'lucide-react';
 
 const BRANDS = [
   'BMW','Mercedes-Benz','Audi','Volkswagen','Porsche','Hyundai','Kia',
-  'Genesis','Lexus','Toyota','Honda','Chevrolet','SsangYong','Renault',
-  'Volvo','Land Rover','Mini','Peugeot','Subaru','Mitsubishi',
+  'Genesis','Lexus','Toyota','Honda','Chevrolet','SsangYong','Renault Samsung',
+  'Volvo','Land Rover','Mini','Peugeot','Subaru','Mitsubishi','Nissan',
+  'Infiniti','Maserati','Ferrari','Lamborghini',
 ];
 
 const FUELS = [
-  { val: '', label: 'Të gjitha' },
+  { val: '',         label: 'Të gjitha' },
   { val: 'diesel',   label: 'Naftë (Diesel)' },
   { val: 'gasoline', label: 'Benzinë (Petrol)' },
   { val: 'electric', label: 'Elektrik' },
@@ -16,7 +17,7 @@ const FUELS = [
   { val: 'lpg',      label: 'LPG' },
 ];
 
-const YEARS = ['', ...Array.from({ length: 20 }, (_, i) => String(2025 - i))];
+const YEARS = Array.from({ length: 21 }, (_, i) => String(2025 - i));
 
 const KM_MAX = [
   { val: '',       label: 'Pa limit' },
@@ -31,7 +32,9 @@ const EMPTY = { manufacturer: '', fuel: '', yearFrom: '', yearTo: '', mileageTo:
 function Sel({ label, value, onChange, children }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-[10px] uppercase tracking-wider text-gray-600 font-mono font-semibold">{label}</label>
+      <label className="text-[10px] uppercase tracking-wider font-mono font-semibold" style={{ color: 'var(--text-3)' }}>
+        {label}
+      </label>
       <div className="relative">
         <select
           value={value}
@@ -40,7 +43,7 @@ function Sel({ label, value, onChange, children }) {
         >
           {children}
         </select>
-        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
+        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: 'var(--text-3)' }} />
       </div>
     </div>
   );
@@ -64,39 +67,41 @@ export default function Filters({ filters, onChange }) {
       </Sel>
       <Sel label="Viti nga" value={filters.yearFrom} onChange={set('yearFrom')}>
         <option value="">Çdo vit</option>
-        {YEARS.filter(Boolean).map(y => <option key={y} value={y}>{y}</option>)}
+        {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
       </Sel>
       <Sel label="Viti deri" value={filters.yearTo} onChange={set('yearTo')}>
         <option value="">Çdo vit</option>
-        {YEARS.filter(Boolean).map(y => <option key={y} value={y}>{y}</option>)}
+        {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
       </Sel>
       <Sel label="Km maksimum" value={filters.mileageTo} onChange={set('mileageTo')}>
         {KM_MAX.map(k => <option key={k.val} value={k.val}>{k.label}</option>)}
       </Sel>
-      {hasFilters && (
+      {hasFilters ? (
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] uppercase tracking-wider text-gray-700 font-mono font-semibold">Reseto</label>
+          <label className="text-[10px] uppercase tracking-wider font-mono font-semibold invisible">x</label>
           <button
             onClick={() => { onChange(EMPTY); setOpen(false); }}
-            className="flex items-center justify-center gap-1.5 h-[42px] text-xs text-gray-400
-                       hover:text-white bg-white/5 hover:bg-red-500/10 border border-white/10
-                       hover:border-red-500/30 rounded-xl transition-all"
+            className="flex items-center justify-center gap-1.5 h-[42px] text-xs rounded-xl transition-all"
+            style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-3)' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)'; e.currentTarget.style.color = '#ef4444'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-3)'; }}
           >
             <RotateCcw className="w-3.5 h-3.5" />
             Pastro
           </button>
         </div>
-      )}
+      ) : <div />}
     </div>
   );
 
   return (
-    <div className="border-b border-white/5 bg-[#070711]">
-      {/* Mobile toggle bar */}
+    <div style={{ borderBottom: '1px solid var(--border-lo)', background: 'var(--bg-page)' }}>
+      {/* Mobile toggle */}
       <div className="flex sm:hidden items-center justify-between px-4 py-3">
         <button
           onClick={() => setOpen(o => !o)}
-          className="flex items-center gap-2 text-sm font-medium text-gray-300 hover:text-white transition-colors"
+          className="flex items-center gap-2 text-sm font-medium transition-colors"
+          style={{ color: 'var(--text-2)' }}
         >
           <SlidersHorizontal className="w-4 h-4 text-blue-400" />
           Filtra
@@ -115,18 +120,15 @@ export default function Filters({ filters, onChange }) {
 
       {/* Mobile drawer */}
       {open && (
-        <div className="sm:hidden px-4 pb-4 border-t border-white/5 pt-4">
+        <div className="sm:hidden px-4 pb-4 pt-4" style={{ borderTop: '1px solid var(--border-lo)' }}>
           {filterContent}
-          <button
-            onClick={() => setOpen(false)}
-            className="mt-4 w-full btn-primary"
-          >
+          <button onClick={() => setOpen(false)} className="mt-4 w-full btn-primary">
             Apliko Filtrat
           </button>
         </div>
       )}
 
-      {/* Desktop always-visible row */}
+      {/* Desktop row */}
       <div className="hidden sm:block max-w-7xl mx-auto px-4 md:px-8 py-4">
         {filterContent}
       </div>

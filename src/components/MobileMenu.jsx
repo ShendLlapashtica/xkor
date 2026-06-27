@@ -1,74 +1,92 @@
 import { Link } from 'react-router-dom';
-import { X, Calculator, Home, MessageCircle, ChevronRight } from 'lucide-react';
+import { X, Calculator, Home, MessageCircle, Sun, Moon, ChevronRight } from 'lucide-react';
 import { useEffect } from 'react';
 
-export default function MobileMenu({ onClose, onOpenCalc }) {
+export default function MobileMenu({ onClose, onOpenCalc, country, setCountry, dark, toggleTheme }) {
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
   }, []);
 
+  const drawerBg = dark ? 'bg-[#0a0a18] border-white/10' : 'bg-white border-black/10';
+
   return (
     <div className="fixed inset-0 z-[150] flex justify-end">
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Drawer */}
-      <div className="relative w-72 h-full bg-[#0a0a18] border-l border-white/10 flex flex-col shadow-2xl animate-slide-in-right">
+      <div className={`relative w-72 h-full border-l flex flex-col shadow-2xl animate-slide-in-right ${drawerBg}`}>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
-          <span className="font-mono font-bold text-lg text-white tracking-tight">
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+          <span className="font-mono font-bold text-lg" style={{ color: 'var(--text-1)' }}>
             X<span className="text-blue-500">K</span>OR
           </span>
-          <button onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10
-                       text-gray-400 hover:text-white transition-all">
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full btn-ghost">
             <X className="w-4 h-4" />
           </button>
         </div>
 
+        {/* Country toggle */}
+        <div className="px-4 pt-4 pb-2">
+          <p className="text-[10px] uppercase tracking-widest mb-2 font-mono font-semibold" style={{ color: 'var(--text-3)' }}>
+            Çmim për
+          </p>
+          <div className="flex rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+            <button
+              onClick={() => setCountry('AL')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold transition-all
+                ${country === 'AL' ? 'bg-blue-600 text-white' : 'text-secondary'}`}
+            >
+              🇦🇱 Shqipëri (Durrës)
+            </button>
+            <button
+              onClick={() => setCountry('XK')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold transition-all
+                ${country === 'XK' ? 'bg-blue-600 text-white' : 'text-secondary'}`}
+            >
+              🇽🇰 Kosovë
+            </button>
+          </div>
+        </div>
+
         {/* Nav items */}
         <nav className="flex-1 p-4 space-y-1">
-          <MenuItem icon={Home} label="Ballina" onClick={onClose} to="/" />
+          <Link
+            to="/" onClick={onClose}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all group hover:bg-card2"
+            style={{ color: 'var(--text-2)' }}
+          >
+            <Home className="w-4 h-4 text-blue-400" />
+            <span className="flex-1 text-sm font-medium" style={{ color: 'var(--text-1)' }}>Ballina</span>
+            <ChevronRight className="w-3.5 h-3.5" style={{ color: 'var(--text-3)' }} />
+          </Link>
           <button
             onClick={onOpenCalc}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300
-                       hover:text-white hover:bg-white/5 transition-all group"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group hover:bg-card2"
           >
             <Calculator className="w-4 h-4 text-blue-400" />
-            <span className="flex-1 text-left text-sm font-medium">Kalkulatori i Doganës</span>
-            <ChevronRight className="w-3.5 h-3.5 text-gray-600 group-hover:text-gray-400" />
+            <span className="flex-1 text-left text-sm font-medium" style={{ color: 'var(--text-1)' }}>Kalkulatori i Doganës</span>
+            <ChevronRight className="w-3.5 h-3.5" style={{ color: 'var(--text-3)' }} />
+          </button>
+          <button
+            onClick={toggleTheme}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group hover:bg-card2"
+          >
+            {dark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
+            <span className="flex-1 text-left text-sm font-medium" style={{ color: 'var(--text-1)' }}>
+              {dark ? 'Light Mode' : 'Dark Mode'}
+            </span>
           </button>
         </nav>
 
         {/* Footer CTA */}
-        <div className="p-4 border-t border-white/[0.06]">
+        <div className="p-4" style={{ borderTop: '1px solid var(--border)' }}>
           <a href="https://wa.me/355000000000" target="_blank" rel="noopener noreferrer"
              className="btn-primary w-full" onClick={onClose}>
             <MessageCircle className="w-4 h-4" />
             Na Kontaktoni
           </a>
-          <p className="text-[10px] text-gray-700 text-center mt-3">
-            Makina koreane te gatshme për import
-          </p>
         </div>
       </div>
     </div>
-  );
-}
-
-function MenuItem({ icon: Icon, label, to, onClick }) {
-  return (
-    <Link
-      to={to}
-      onClick={onClick}
-      className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300
-                 hover:text-white hover:bg-white/5 transition-all group"
-    >
-      <Icon className="w-4 h-4 text-blue-400" />
-      <span className="flex-1 text-sm font-medium">{label}</span>
-      <ChevronRight className="w-3.5 h-3.5 text-gray-600 group-hover:text-gray-400" />
-    </Link>
   );
 }

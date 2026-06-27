@@ -3,6 +3,8 @@ import { useEffect } from 'react';
 import Header from './components/Header.jsx';
 import Home from './pages/Home.jsx';
 import CarDetail from './pages/CarDetail.jsx';
+import { CountryProvider } from './contexts/CountryContext.jsx';
+import { ThemeProvider } from './contexts/ThemeContext.jsx';
 import './index.css';
 
 function ScrollToTop() {
@@ -13,15 +15,19 @@ function ScrollToTop() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <ScrollToTop />
-      <div className="min-h-screen bg-[#070711]">
-        <Header />
-        <Routes>
-          <Route path="/"        element={<Home />} />
-          <Route path="/car/:id" element={<CarDetail />} />
-        </Routes>
-      </div>
-    </BrowserRouter>
+    <ThemeProvider>
+      <CountryProvider>
+        <BrowserRouter>
+          <ScrollToTop />
+          <div className="min-h-screen bg-page text-primary">
+            <Header />
+            <Routes>
+              <Route path="/"        element={<Home />} />
+              <Route path="/car/:id" element={<CarDetail />} />
+            </Routes>
+          </div>
+        </BrowserRouter>
+      </CountryProvider>
+    </ThemeProvider>
   );
 }

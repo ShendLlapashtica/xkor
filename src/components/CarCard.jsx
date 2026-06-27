@@ -1,82 +1,148 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Gauge, Settings } from 'lucide-react';
-import { carPhotoUrl, durresPrice, fmtEur, fmtKm, carYear, tr } from '../lib/utils.js';
-import { translateFuel, translateTrans } from '../lib/translations.js';
+import { carPhotoUrl, fmtEur, fmtKm, carYear, tr, trCity } from '../lib/utils.js';
+import { translateFuel, translateTrans, translateColor } from '../lib/translations.js';
+import { useCountry } from '../contexts/CountryContext.jsx';
 
-const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect width='400' height='300' fill='%230d0d1a'/%3E%3Ctext x='200' y='155' text-anchor='middle' fill='%23334155' font-size='13' font-family='sans-serif'%3EFoto nuk disponohet%3C/text%3E%3C/svg%3E";
+const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='260'%3E%3Crect width='400' height='260' fill='%230a0a14'/%3E%3Ctext x='200' y='138' text-anchor='middle' fill='%23222240' font-size='13' font-family='sans-serif'%3EFoto nuk disponohet%3C/text%3E%3C/svg%3E";
+
+const CONDITION_ALB = { Inspection: 'Inspektuar', Record: 'Histori', Resume: 'Raport', Warranty: 'Garanci' };
+
+const FUEL_COLOR = {
+  'Elektrik': 'bg-emerald-500/15 text-emerald-300 border-emerald-500/25',
+  'Hibrid':   'bg-teal-500/15 text-teal-300 border-teal-500/25',
+  'Naftë':    'bg-amber-500/15 text-amber-300 border-amber-500/25',
+  'default':  'bg-blue-500/15 text-blue-300 border-blue-500/25',
+};
 
 export default function CarCard({ car }) {
   const [imgSrc, setImgSrc] = useState(() => carPhotoUrl(car) || PLACEHOLDER);
-  const [imgOk, setImgOk]   = useState(true);
+  const { priceFor, label } = useCountry();
 
-  const year  = carYear(car);
-  const price = durresPrice(car.Price);
-  const fuel  = translateFuel(car.FuelType);
-  const trans = translateTrans(car.Transmission);
-
-  const manufacturer = tr(car.Manufacturer);
-  const model        = tr(car.Model);
-  const badge        = tr(car.Badge);
-
-  const fuelColor =
-    fuel === 'Elektrik' ? 'bg-green-500/20 text-green-300 border-green-500/30' :
-    fuel === 'Hibrid'   ? 'bg-teal-500/20 text-teal-300 border-teal-500/30' :
-    fuel === 'Naftë'    ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
-    'bg-blue-500/20 text-blue-300 border-blue-500/30';
+  const year   = carYear(car);
+  const price  = priceFor(car.Price);
+  const fuel   = translateFuel(car.FuelType);
+  const trans  = translateTrans(car.Transmission);
+  const color  = translateColor(car.Color);
+  const maker  = tr(car.Manufacturer);
+  const model  = tr(car.Model);
+  const badge  = tr(car.Badge);
+  const badgeDetail = tr(car.BadgeDetail);
+  const cc     = car.CylinderCapacity || car.Spec?.Displacement;
+  const drive  = car.Spec?.Drive || car.Drive;
+  const city   = trCity(car.OfficeCityState);
+  const fuelCls = FUEL_COLOR[fuel] || FUEL_COLOR.default;
+  const conditions = (car.Condition || []).slice(0, 3);
 
   return (
     <Link
       to={`/car/${car.Id}`}
       state={{ car }}
-      className="group block bg-[#0d0d1c] border border-white/5 rounded-2xl overflow-hidden
-                 hover:border-blue-500/25 hover:shadow-2xl hover:shadow-blue-950/20
-                 transition-all duration-200 hover:-translate-y-0.5"
+      className="group flex flex-col rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-0.5"
+      style={{
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border)',
+        boxShadow: 'none',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(59,130,246,0.3)'; e.currentTarget.style.boxShadow = '0 20px 40px rgba(59,130,246,0.05)'; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none'; }}
     >
       {/* Photo */}
-      <div className="relative overflow-hidden bg-[#0a0a14]" style={{ aspectRatio: '4/3' }}>
+      <div className="relative overflow-hidden flex-shrink-0" style={{ aspectRatio: '16/10', background: 'var(--bg-card2)' }}>
         <img
           src={imgSrc}
-          alt={`${manufacturer} ${model}`}
+          alt={`${maker} ${model}`}
           loading="lazy"
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          onError={() => { setImgOk(false); setImgSrc(PLACEHOLDER); }}
+          className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500"
+          onError={() => setImgSrc(PLACEHOLDER)}
         />
         {year && (
-          <span className="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-sm text-white text-[11px] font-bold px-2 py-0.5 rounded-md">
+          <span className="absolute top-2.5 left-2.5 font-mono text-[11px] font-bold text-white bg-black/65 backdrop-blur px-2 py-0.5 rounded-md tracking-wide">
             {year}
           </span>
         )}
         {fuel && (
-          <span className={`absolute top-2.5 right-2.5 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${fuelColor}`}>
+          <span className={`absolute top-2.5 right-2.5 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${fuelCls}`}>
             {fuel}
           </span>
+        )}
+        {conditions.length > 0 && (
+          <div className="absolute bottom-2 left-2 flex gap-1">
+            {conditions.map(c => (
+              <span key={c} className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-black/60 backdrop-blur text-white/70 border border-white/10">
+                {CONDITION_ALB[c] || c}
+              </span>
+            ))}
+          </div>
         )}
       </div>
 
       {/* Info */}
-      <div className="p-4">
-        <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold mb-0.5">{manufacturer}</p>
-        <h3 className="text-[15px] font-bold text-white leading-snug truncate">{model || '—'}</h3>
-        {badge && <p className="text-[11px] text-gray-500 mt-0.5 truncate">{badge}</p>}
-
-        <div className="flex items-center gap-3 mt-3 text-xs text-gray-400">
-          {car.Mileage != null && (
-            <span className="flex items-center gap-1">
-              <Gauge className="w-3 h-3 text-gray-600" />{fmtKm(car.Mileage)}
-            </span>
+      <div className="flex flex-col flex-1 p-4 gap-3">
+        {/* Name */}
+        <div>
+          <h3 className="text-base font-bold leading-snug" style={{ color: 'var(--text-1)' }}>
+            {maker} <span style={{ color: 'var(--text-2)' }}>{model}</span>
+          </h3>
+          {badge && (
+            <p className="text-xs mt-0.5 leading-snug truncate" style={{ color: 'var(--text-3)' }}>
+              {[badge, badgeDetail].filter(Boolean).join(' · ')}
+            </p>
           )}
-          {trans && <span className="text-gray-600">·</span>}
-          {trans && <span>{trans}</span>}
         </div>
 
-        <div className="mt-4 pt-3 border-t border-white/5 flex items-end justify-between">
+        {/* Attribute grid */}
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+          {car.Mileage != null && (
+            <div className="flex items-center gap-1.5" style={{ color: 'var(--text-2)' }}>
+              <span style={{ color: 'var(--text-3)' }}>km</span>
+              <span className="font-mono font-semibold" style={{ color: 'var(--text-1)' }}>{fmtKm(car.Mileage)}</span>
+            </div>
+          )}
+          {trans && trans !== '—' && (
+            <div className="flex items-center gap-1.5" style={{ color: 'var(--text-2)' }}>
+              <span style={{ color: 'var(--text-3)' }}>⚙</span>
+              <span className="truncate">{trans}</span>
+            </div>
+          )}
+          {cc && (
+            <div className="flex items-center gap-1.5" style={{ color: 'var(--text-2)' }}>
+              <span style={{ color: 'var(--text-3)' }}>cc</span>
+              <span className="font-mono" style={{ color: 'var(--text-1)' }}>{Number(cc).toLocaleString('de-DE')}</span>
+            </div>
+          )}
+          {drive && (
+            <div className="flex items-center gap-1.5" style={{ color: 'var(--text-2)' }}>
+              <span style={{ color: 'var(--text-3)' }}>↕</span>
+              <span className="truncate">{drive}</span>
+            </div>
+          )}
+          {color && color !== '—' && (
+            <div className="flex items-center gap-1.5" style={{ color: 'var(--text-2)' }}>
+              <span style={{ color: 'var(--text-3)' }}>◐</span>
+              <span className="truncate">{color}</span>
+            </div>
+          )}
+          {city && (
+            <div className="flex items-center gap-1.5" style={{ color: 'var(--text-2)' }}>
+              <span style={{ color: 'var(--text-3)' }}>📍</span>
+              <span className="truncate">{city}</span>
+            </div>
+          )}
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--border-lo)' }} />
+
+        {/* Price */}
+        <div className="flex items-end justify-between mt-auto">
           <div>
-            <p className="text-xl font-extrabold text-white tracking-tight">{fmtEur(price)}</p>
-            <p className="text-[10px] text-gray-600 mt-0.5">deri në Durrës</p>
+            <p className="font-mono text-xl font-bold tracking-tight leading-none" style={{ color: 'var(--text-1)' }}>
+              {price > 0 ? fmtEur(price) : '—'}
+            </p>
+            <p className="text-[10px] mt-1" style={{ color: 'var(--text-3)' }}>{label}</p>
           </div>
-          <span className="text-xs font-semibold text-blue-500 group-hover:text-blue-400 transition-colors pb-0.5">
-            Shiko →
+          <span className="text-xs font-semibold text-blue-500 group-hover:text-blue-400 transition-colors pb-0.5 font-mono">
+            SHIKO →
           </span>
         </div>
       </div>
