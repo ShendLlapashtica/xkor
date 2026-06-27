@@ -1,0 +1,59 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background-color: #070711;
+    color: #e2e8f0;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+}
+
+@layer components {
+  .glass {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    backdrop-filter: blur(12px);
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500
+           active:bg-blue-700 text-white font-semibold rounded-xl transition-all duration-150
+           disabled:opacity-40 disabled:cursor-not-allowed select-none;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5
+           bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white
+           font-medium rounded-xl transition-all duration-150 select-none;
+  }
+
+  .input {
+    @apply w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-gray-100
+           placeholder:text-gray-600 focus:outline-none focus:border-blue-500/60 focus:ring-1
+           focus:ring-blue-500/20 transition-all duration-150;
+  }
+
+  .select {
+    @apply w-full bg-[#0d0d1a] border border-white/10 rounded-xl px-3 py-2.5 text-gray-200
+           focus:outline-none focus:border-blue-500/60 transition-all duration-150 cursor-pointer;
+  }
+}
