@@ -1,25 +1,16 @@
 export const FUEL_ALB = {
-  '가솔린': 'Benzinë', Gasoline: 'Benzinë', gasoline: 'Benzinë',
-  '디젤': 'Naftë', Diesel: 'Naftë', diesel: 'Naftë',
-  '전기': 'Elektrik', Electric: 'Elektrik', electric: 'Elektrik',
-  '하이브리드': 'Hibrid', Hybrid: 'Hibrid', hybrid: 'Hibrid',
-  '가솔린+전기': 'Hibrid (Plug-in)', 'Plug-in Hybrid': 'Hibrid (Plug-in)',
-  LPG: 'LPG', lpg: 'LPG',
+  '가솔린': 'Benzinë', Gasoline: 'Benzinë',
+  '디젤': 'Naftë', Diesel: 'Naftë',
+  '전기': 'Elektrik', Electric: 'Elektrik',
+  '하이브리드': 'Hibrid', Hybrid: 'Hibrid',
+  '가솔린+전기': 'Hibrid (Plug-in)',
+  LPG: 'LPG',
 };
 
 export const TRANS_ALB = {
-  '오토': 'Automatik', Automatic: 'Automatik', automatic: 'Automatik',
-  '수동': 'Manual', Manual: 'Manual', manual: 'Manual',
-  '세미오토': 'Semi-Automatik',
-  DCT: 'DCT',
-};
-
-export const DRIVE_ALB = {
-  '2WD': 'FWD / RWD',
-  '4WD': 'AWD',
-  FWD: 'FWD',
-  RWD: 'RWD',
-  AWD: 'AWD',
+  '오토': 'Automatik', A: 'Automatik', Automatic: 'Automatik',
+  '수동': 'Manual', M: 'Manual', Manual: 'Manual',
+  '세미오토': 'Semi-Automatik', DCT: 'DCT', CVT: 'CVT',
 };
 
 export const OPTION_ALB = {
@@ -68,29 +59,45 @@ export const OPTION_ALB = {
   '자동에어컨': 'Klimë Automatike',
   '듀얼에어컨': 'Klimë Duale',
   '이그니션스타트': 'Nisje pa Çelës (Start/Stop)',
-  '전동접이미러': 'Pasqyra Anësore Elektrike (Palosje)',
-  '후진기어': 'Kamera Mbrapa',
-  '빌트인캠': 'Kamera e Integruar (BlackBox)',
-  '하이패스': 'Kalim Automatik Tarif',
-  '통합주차지원': 'Sistem Parkimi i Integruar',
+  '빌트인캠': 'Kamera e Integruar (Dashcam)',
+  '하이패스': 'Kalim Automatik Tarife',
   '360어라운드뷰': 'Kamera 360°',
-  '후방주차': 'Sensorë Parkimi (Mbrapa)',
+};
+
+export const COLOR_ALB = {
+  '검은색': 'E zezë', '검정': 'E zezë', '블랙': 'E zezë', Black: 'E zezë',
+  '흰색': 'E bardhë', '화이트': 'E bardhë', White: 'E bardhë',
+  '은색': 'Argjendtë', '실버': 'Argjendtë', Silver: 'Argjendtë',
+  '회색': 'Gri', '그레이': 'Gri', Gray: 'Gri', Grey: 'Gri',
+  '빨간색': 'E kuqe', '레드': 'E kuqe', Red: 'E kuqe',
+  '파란색': 'E kaltër', '블루': 'E kaltër', Blue: 'E kaltër',
+  '남색': 'Blu i errët', '네이비': 'Blu i errët', Navy: 'Blu i errët',
+  '금색': 'E artë', '골드': 'E artë', Gold: 'E artë',
+  '갈색': 'Kafe', '브라운': 'Kafe', Brown: 'Kafe',
+  '주황색': 'Portokalli', '오렌지': 'Portokalli', Orange: 'Portokalli',
+  '노란색': 'E verdhë', Yellow: 'E verdhë',
+  '녹색': 'E gjelbër', Green: 'E gjelbër',
+  '보라색': 'Vjollcë', Purple: 'Vjollcë',
+};
+
+export const DAMAGE_CODES = {
+  N: { label: 'Nderrim', desc: 'Pjesë e Ndërruar', color: '#ef4444' },
+  R: { label: 'Riparim', desc: 'Llamarinë / Panel', color: '#f97316' },
+  K: { label: 'Korrozion', desc: 'Ndryshkim', color: '#ca8a04' },
+  G: { label: 'Gervishtje', desc: 'Dëmtim sipërfaqësor', color: '#eab308' },
+  P: { label: 'Parregullsi', desc: 'Deformim i vogël', color: '#6b7280' },
+  // Encar internal codes mapped to ours
+  W: { label: 'Nderrim', desc: 'Pjesë e Ndërruar', color: '#ef4444' },
+  C: { label: 'Riparim', desc: 'Llamarinë / Panel', color: '#f97316' },
+  U: { label: 'Korrozion', desc: 'Ndryshkim', color: '#ca8a04' },
+  A: { label: 'Gervishtje', desc: 'Dëmtim sipërfaqësor', color: '#eab308' },
+  T: { label: 'Parregullsi', desc: 'Deformim i vogël', color: '#6b7280' },
 };
 
 export function translateFuel(val) { return FUEL_ALB[val] || val || '—'; }
 export function translateTrans(val) { return TRANS_ALB[val] || val || '—'; }
 export function translateOption(val) { return OPTION_ALB[val] || val; }
-export function translateDrive(val) { return DRIVE_ALB[val] || val || '—'; }
-
-export const DAMAGE_CODES = {
-  N: { label: 'Nderrim (Pjesë e re)', color: '#ef4444', bg: 'bg-red-500' },
-  R: { label: 'Riparim (Llamarinë)', color: '#f97316', bg: 'bg-orange-500' },
-  K: { label: 'Korrozion', color: '#a16207', bg: 'bg-yellow-700' },
-  G: { label: 'Gervishtje', color: '#eab308', bg: 'bg-yellow-500' },
-  P: { label: 'Parregullsi', color: '#6b7280', bg: 'bg-gray-500' },
-  W: { label: 'Nderrim (Pjesë e re)', color: '#ef4444', bg: 'bg-red-500' },
-  C: { label: 'Riparim (Llamarinë)', color: '#f97316', bg: 'bg-orange-500' },
-  U: { label: 'Korrozion', color: '#a16207', bg: 'bg-yellow-700' },
-  A: { label: 'Gervishtje', color: '#eab308', bg: 'bg-yellow-500' },
-  T: { label: 'Parregullsi', color: '#6b7280', bg: 'bg-gray-500' },
-};
+export function translateColor(val) {
+  if (!val) return '—';
+  return COLOR_ALB[val] || val;
+}
