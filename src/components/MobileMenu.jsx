@@ -52,14 +52,6 @@ export default function MobileMenu({ onClose, onOpenCalc, country, setCountry, d
 
         {/* Nav items */}
         <nav className="p-4 space-y-1">
-          <Link
-            to="/" onClick={onClose}
-            className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all hover:bg-card2"
-          >
-            <span className="text-base">🏠</span>
-            <span className="flex-1 text-sm font-medium" style={{ color: 'var(--text-1)' }}>Ballina</span>
-            <ChevronRight className="w-3.5 h-3.5" style={{ color: 'var(--text-3)' }} />
-          </Link>
           <button
             onClick={onOpenCalc}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all hover:bg-card2"
@@ -73,9 +65,6 @@ export default function MobileMenu({ onClose, onOpenCalc, country, setCountry, d
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all hover:bg-card2"
           >
             {dark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
-            <span className="flex-1 text-left text-sm font-medium" style={{ color: 'var(--text-1)' }}>
-              {dark ? 'Tema e çelët' : 'Tema e errët'}
-            </span>
           </button>
         </nav>
 
