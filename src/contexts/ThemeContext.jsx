@@ -4,7 +4,7 @@ const Ctx = createContext(null);
 
 export function ThemeProvider({ children }) {
   const [dark, setDarkState] = useState(
-    () => localStorage.getItem('xkor_theme') !== 'light'
+    () => localStorage.getItem('xkor_theme') === 'dark'
   );
 
   useEffect(() => {

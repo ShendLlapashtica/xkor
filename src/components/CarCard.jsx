@@ -56,16 +56,6 @@ export default function CarCard({ car }) {
           className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500"
           onError={() => setImgSrc(PLACEHOLDER)}
         />
-        {year && (
-          <span className="absolute top-2.5 left-2.5 font-mono text-[11px] font-bold text-white bg-black/65 backdrop-blur px-2 py-0.5 rounded-md tracking-wide">
-            {year}
-          </span>
-        )}
-        {fuel && (
-          <span className={`absolute top-2.5 right-2.5 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${fuelCls}`}>
-            {fuel}
-          </span>
-        )}
         {conditions.length > 0 && (
           <div className="absolute bottom-2 left-2 flex gap-1">
             {conditions.map(c => (
@@ -88,6 +78,17 @@ export default function CarCard({ car }) {
             <p className="text-xs mt-0.5 leading-snug truncate" style={{ color: 'var(--text-3)' }}>
               {[badge, badgeDetail].filter(Boolean).join(' · ')}
             </p>
+          )}
+          {(year || fuel) && (
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+              {year && (
+                <span className="font-mono text-[11px] font-bold" style={{ color: 'var(--text-1)' }}>{year}</span>
+              )}
+              {year && fuel && <span style={{ color: 'var(--text-4)' }}>·</span>}
+              {fuel && (
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${fuelCls}`}>{fuel}</span>
+              )}
+            </div>
           )}
         </div>
 
@@ -125,7 +126,7 @@ export default function CarCard({ car }) {
           )}
           {city && (
             <div className="flex items-center gap-1.5" style={{ color: 'var(--text-2)' }}>
-              <span style={{ color: 'var(--text-3)' }}>📍</span>
+              <span>🇰🇷</span>
               <span className="truncate">{city}</span>
             </div>
           )}

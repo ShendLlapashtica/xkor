@@ -162,11 +162,8 @@ export default function CarDetail() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 md:px-8 pt-6">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8">
-
-          {/* ── LEFT ── */}
-          <div className="space-y-6">
+      <div className="max-w-5xl mx-auto px-4 md:px-8 pt-6">
+        <div className="space-y-6">
 
             {/* Gallery */}
             {photos.length > 0
@@ -176,6 +173,53 @@ export default function CarDetail() {
                   <span style={{ color: 'var(--text-3)' }}>Foto nuk disponohet</span>
                 </div>
             }
+
+            {/* ── Price Card — right below gallery ── */}
+            <div className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+                {/* Main price block */}
+                <div className="flex-1">
+                  <p className="text-[10px] uppercase tracking-widest font-semibold mb-1 font-mono" style={{ color: 'var(--text-3)' }}>
+                    Çmimi deri në {country === 'AL' ? 'Durrës' : 'Prishtinë'} 🇽🇰
+                  </p>
+                  <p className="text-4xl font-extrabold tracking-tight font-mono" style={{ color: 'var(--text-1)' }}>
+                    {eurBase > 0 ? fmtEur(eurMain) : '—'}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>Transport + doganë të përfshira</p>
+                  <div className="flex flex-wrap gap-4 mt-3 text-xs" style={{ color: 'var(--text-3)' }}>
+                    <span>🇰🇷 Korea: <strong style={{ color: 'var(--text-2)' }}>{eurBase > 0 ? fmtEur(eurBase) : '—'}</strong></span>
+                    <span>📍 {otherCity}: <strong style={{ color: 'var(--text-2)' }}>{eurBase > 0 ? fmtEur(eurOther) : '—'}</strong></span>
+                  </div>
+                  <p className="text-[10px] mt-2" style={{ color: 'var(--text-4)' }}>
+                    * Çmimi bazë + transport + doganë. Për çmim final kontaktoni.
+                  </p>
+                </div>
+                {/* CTA buttons */}
+                <div className="flex flex-col gap-2 sm:w-56 flex-shrink-0">
+                  <a href={`https://wa.me/${WHATSAPP}?text=${waMsg}`}
+                     target="_blank" rel="noopener noreferrer"
+                     className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-bold text-white text-sm transition-all hover:brightness-110 active:scale-95"
+                     style={{ background: 'linear-gradient(135deg,#25d366,#128c7e)' }}>
+                    <MessageCircle className="w-4 h-4" />WhatsApp
+                  </a>
+                  <a href={`tel:${PHONE}`}
+                     className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl font-semibold text-sm transition-all btn-ghost">
+                    <Phone className="w-4 h-4" />{PHONE}
+                  </a>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-4 mt-4 pt-4 text-xs" style={{ borderTop: '1px solid var(--border-lo)', color: 'var(--text-3)' }}>
+                <span className="flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5 text-green-500" />Shërbim Inspektimi Profesional</span>
+                <span className="flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5 text-green-500" />Transport i Siguruar Deri Te Ju</span>
+                {id && (
+                  <a href={`https://www.encar.com/dc/dc_cardetailview.do?carid=${id}`}
+                     target="_blank" rel="noopener noreferrer"
+                     className="flex items-center gap-1 hover:text-blue-400 transition-colors ml-auto">
+                    <ExternalLink className="w-3.5 h-3.5" />Shiko origjinalin Encar
+                  </a>
+                )}
+              </div>
+            </div>
 
             {/* Title + status */}
             <div className="flex items-start justify-between gap-4">
@@ -325,69 +369,6 @@ export default function CarDetail() {
                 </div>
               )}
             </div>
-          </div>
-
-          {/* ── RIGHT — sticky price ── */}
-          <div className="space-y-4">
-            <div className="rounded-2xl p-6 lg:sticky lg:top-20" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-
-              {/* Primary price */}
-              <div className="pb-4" style={{ borderBottom: '1px solid var(--border-lo)' }}>
-                <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5 font-mono" style={{ color: 'var(--text-3)' }}>
-                  Çmimi deri në {country === 'AL' ? 'Durrës' : 'Prishtinë'}
-                </p>
-                <p className="text-4xl font-extrabold tracking-tight font-mono" style={{ color: 'var(--text-1)' }}>
-                  {eurBase > 0 ? fmtEur(eurMain) : '—'}
-                </p>
-                <p className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>Transport + doganë të përfshira</p>
-              </div>
-
-              {/* Secondary prices */}
-              <div className="pt-4 space-y-2.5">
-                <PriceLine label="Çmimi bazë (Korea)" value={eurBase > 0 ? fmtEur(eurBase) : '—'} />
-                <PriceLine label={`Deri në ${otherCity}`} value={eurBase > 0 ? fmtEur(eurOther) : '—'} />
-              </div>
-
-              <p className="text-[10px] mt-3" style={{ color: 'var(--text-4)' }}>
-                * Çmimi bazë + transport + doganë. Për çmim final me taksa importi kontaktoni.
-              </p>
-
-              {/* CTAs */}
-              <div className="mt-6 space-y-3">
-                <a href={`https://wa.me/${WHATSAPP}?text=${waMsg}`}
-                   target="_blank" rel="noopener noreferrer"
-                   className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-bold text-white transition-all hover:brightness-110 active:scale-95"
-                   style={{ background: 'linear-gradient(135deg,#25d366,#128c7e)' }}>
-                  <MessageCircle className="w-4 h-4" />Kontakto me WhatsApp
-                </a>
-                <a href={`tel:${PHONE}`}
-                   className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm transition-all btn-ghost">
-                  <Phone className="w-4 h-4" />{PHONE}
-                </a>
-                <a href={`mailto:${EMAIL}?subject=${encodeURIComponent(`Interesim: ${manufacturer} ${model} (${year}) #${id}`)}`}
-                   className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm transition-all btn-ghost">
-                  <Mail className="w-4 h-4" />{EMAIL}
-                </a>
-              </div>
-
-              {/* Trust badges */}
-              <div className="mt-5 pt-4 space-y-2" style={{ borderTop: '1px solid var(--border-lo)' }}>
-                {['Shërbim Inspektimi Profesional', 'Transport i Siguruar Deri Te Ju'].map(t => (
-                  <div key={t} className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-3)' }}>
-                    <ShieldCheck className="w-3.5 h-3.5 text-green-600" />{t}
-                  </div>
-                ))}
-                {id && (
-                  <a href={`https://www.encar.com/dc/dc_cardetailview.do?carid=${id}`}
-                     target="_blank" rel="noopener noreferrer"
-                     className="flex items-center gap-2 text-xs mt-1 hover:text-blue-400 transition-colors"
-                     style={{ color: 'var(--text-4)' }}>
-                    <ExternalLink className="w-3.5 h-3.5" />Shiko listimin Encar origjinal
-                  </a>
-                )}
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* ── Similar Cars ── */}
@@ -415,13 +396,3 @@ export default function CarDetail() {
   );
 }
 
-function PriceLine({ label, value }) {
-  return (
-    <div className="flex justify-between items-center text-sm">
-      <span className="flex items-center gap-1.5" style={{ color: 'var(--text-3)' }}>
-        <MapPin className="w-3.5 h-3.5" />{label}
-      </span>
-      <span className="font-medium font-mono" style={{ color: 'var(--text-2)' }}>{value}</span>
-    </div>
-  );
-}

@@ -34,9 +34,14 @@ export default function Header() {
 
           {/* Logo */}
           <Link to="/" className="flex items-center gap-1.5 group select-none flex-shrink-0 mr-2">
-            <span className="font-mono font-bold text-xl tracking-tight group-hover:text-blue-400 transition-colors" style={{ color: 'var(--text-1)' }}>
-              X<span className="text-blue-500">K</span>OR
-            </span>
+            <div className="flex flex-col leading-none">
+              <span className="font-mono font-bold text-xl tracking-tight group-hover:text-blue-400 transition-colors" style={{ color: 'var(--text-1)' }}>
+                X<span className="text-blue-500">K</span>OR
+              </span>
+              <span style={{ fontSize: '7.5px', letterSpacing: '0.4px', color: 'var(--text-4)', opacity: 0.45, marginTop: '1px', fontWeight: 400 }}>
+                nga WEBORA.KS
+              </span>
+            </div>
           </Link>
 
           {/* Search — desktop */}
@@ -92,7 +97,13 @@ export default function Header() {
               {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
 
-            <a href="https://wa.me/355000000000" target="_blank" rel="noopener noreferrer"
+            <a href="tel:+38349644168"
+               className="hidden sm:inline-flex items-center text-xs font-mono px-2 py-1 rounded-lg btn-ghost"
+               style={{ opacity: 0.55, letterSpacing: '0.2px' }}>
+              +383 49 644 168
+            </a>
+
+            <a href="https://wa.me/38349644168" target="_blank" rel="noopener noreferrer"
                className="hidden sm:inline-flex btn-primary text-xs py-1.5 px-3">
               WhatsApp
             </a>
@@ -106,10 +117,14 @@ export default function Header() {
             </button>
             <button
               onClick={() => setMenu(true)}
-              className="sm:hidden flex w-9 h-9 items-center justify-center rounded-xl btn-ghost text-base"
+              className="sm:hidden flex w-9 h-9 items-center justify-center rounded-xl btn-ghost"
               aria-label="Menu"
             >
-              🍔
+              <svg width="16" height="13" viewBox="0 0 16 13" fill="none" aria-hidden="true">
+                <rect width="16" height="2" rx="1" fill="currentColor"/>
+                <rect y="5.5" width="16" height="2" rx="1" fill="currentColor"/>
+                <rect y="11" width="16" height="2" rx="1" fill="currentColor"/>
+              </svg>
             </button>
           </div>
         </div>
