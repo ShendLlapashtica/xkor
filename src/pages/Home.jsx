@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { TrendingUp, Shield, Truck, BadgeCheck, Clock, HeartHandshake, Globe, X } from 'lucide-react';
+import { TrendingUp, Shield, Truck, BadgeCheck, Clock, HeartHandshake, Globe, X, SlidersHorizontal } from 'lucide-react';
 import CarCard from '../components/CarCard.jsx';
 import Filters from '../components/Filters.jsx';
 
@@ -213,22 +213,24 @@ export default function Home() {
         />
       </div>
 
-      {/* Desktop floating Filtra button — appears when filter row scrolls out of view */}
+      {/* Desktop floating Filtra button — scrolls back to filter row */}
       {!filtersVisible && (
         <div className="hidden sm:flex fixed bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
           <button
-            onClick={() => setFilterForceOpen(true)}
-            className="pointer-events-auto flex items-center gap-2 px-5 py-3 rounded-full text-white font-semibold text-sm shadow-2xl transition-transform active:scale-95"
+            onClick={() => filtersWrapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            className="pointer-events-auto flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-medium transition-all active:scale-95"
             style={{
-              background: 'linear-gradient(135deg,#5b86e5,#bc4e9c)',
-              boxShadow: '0 8px 32px rgba(91,134,229,0.45)',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-2)',
+              backdropFilter: 'blur(12px)',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
             }}
           >
-            <span>⚙</span>
+            <SlidersHorizontal className="w-3.5 h-3.5" />
             Filtra
             {Object.values(filters).filter(Boolean).length > 0 && (
-              <span className="bg-white text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-full leading-none"
-                    style={{ color: '#5b86e5' }}>
+              <span className="text-[10px] font-bold font-mono bg-blue-600 text-white px-1.5 py-0.5 rounded-full leading-none">
                 {Object.values(filters).filter(Boolean).length}
               </span>
             )}

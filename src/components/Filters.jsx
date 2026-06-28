@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronDown, RotateCcw, X } from 'lucide-react';
+import { ChevronDown, RotateCcw, X, SlidersHorizontal } from 'lucide-react';
 
 const BRANDS = [
   'BMW','Mercedes-Benz','Audi','Volkswagen','Porsche',
@@ -10,9 +10,9 @@ const BRANDS = [
 ];
 
 const FUELS = [
-  { val: '',         label: 'Të gjitha' },
-  { val: 'diesel',   label: 'Naftë (Diesel)' },
-  { val: 'gasoline', label: 'Benzinë (Petrol)' },
+  { val: '',         label: 'Karburant' },
+  { val: 'diesel',   label: 'Naftë' },
+  { val: 'gasoline', label: 'Benzinë' },
   { val: 'electric', label: 'Elektrik' },
   { val: 'hybrid',   label: 'Hibrid' },
   { val: 'lpg',      label: 'LPG' },
@@ -21,11 +21,11 @@ const FUELS = [
 const YEARS = Array.from({ length: 21 }, (_, i) => String(2025 - i));
 
 const KM_MAX = [
-  { val: '',       label: 'Pa limit' },
-  { val: '50000',  label: '≤ 50,000 km' },
-  { val: '100000', label: '≤ 100,000 km' },
-  { val: '150000', label: '≤ 150,000 km' },
-  { val: '200000', label: '≤ 200,000 km' },
+  { val: '',       label: 'Km max' },
+  { val: '50000',  label: '≤ 50k km' },
+  { val: '100000', label: '≤ 100k km' },
+  { val: '150000', label: '≤ 150k km' },
+  { val: '200000', label: '≤ 200k km' },
 ];
 
 const EMPTY = { manufacturer: '', fuel: '', yearFrom: '', yearTo: '', mileageTo: '' };
@@ -73,7 +73,7 @@ export default function Filters({ filters, onChange, forceOpen = false, onForceC
         {BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
       </Sel>
       <Sel label="Karburanti" value={filters.fuel} onChange={set('fuel')}>
-        {FUELS.map(f => <option key={f.val} value={f.val}>{f.label}</option>)}
+        {FUELS.map(f => <option key={f.val} value={f.val}>{f.label === 'Karburant' ? 'Të gjitha' : f.label}</option>)}
       </Sel>
       <Sel label="Viti nga" value={filters.yearFrom} onChange={set('yearFrom')}>
         <option value="">Çdo vit</option>
@@ -84,7 +84,7 @@ export default function Filters({ filters, onChange, forceOpen = false, onForceC
         {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
       </Sel>
       <Sel label="Km maksimum" value={filters.mileageTo} onChange={set('mileageTo')}>
-        {KM_MAX.map(k => <option key={k.val} value={k.val}>{k.label}</option>)}
+        {KM_MAX.map(k => <option key={k.val} value={k.val}>{k.val === '' ? 'Pa limit' : k.label}</option>)}
       </Sel>
       {hasFilters ? (
         <div className="flex flex-col gap-1.5">
@@ -105,18 +105,85 @@ export default function Filters({ filters, onChange, forceOpen = false, onForceC
 
   return (
     <>
-      {/* Desktop always-visible filter row */}
+      {/* Desktop: always-visible filter row */}
       <div className="hidden sm:block" style={{ borderBottom: '1px solid var(--border-lo)', background: 'var(--bg-page)' }}>
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
           {filterContent}
         </div>
       </div>
 
-      {/* Slide-up drawer — works on all screen sizes */}
+      {/* Mobile: compact horizontal filter strip */}
+      <div className="sm:hidden overflow-x-auto" style={{ borderBottom: '1px solid var(--border-lo)', background: 'var(--bg-page)' }}>
+        <div className="flex gap-2 px-4 py-2.5 min-w-max items-center">
+          {/* Brand */}
+          <div className="relative">
+            <select value={filters.manufacturer} onChange={e => set('manufacturer')(e.target.value)}
+                    className="appearance-none text-xs rounded-lg pl-2.5 pr-6 py-1.5 font-medium"
+                    style={{ background: filters.manufacturer ? 'rgba(59,130,246,0.08)' : 'var(--bg-input)', border: `1px solid ${filters.manufacturer ? 'rgba(59,130,246,0.3)' : 'var(--border)'}`, color: filters.manufacturer ? '#60a5fa' : 'var(--text-3)' }}>
+              <option value="">Prodhuesi</option>
+              {BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
+            </select>
+            <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" style={{ color: 'var(--text-4)' }} />
+          </div>
+
+          {/* Fuel */}
+          <div className="relative">
+            <select value={filters.fuel} onChange={e => set('fuel')(e.target.value)}
+                    className="appearance-none text-xs rounded-lg pl-2.5 pr-6 py-1.5 font-medium"
+                    style={{ background: filters.fuel ? 'rgba(59,130,246,0.08)' : 'var(--bg-input)', border: `1px solid ${filters.fuel ? 'rgba(59,130,246,0.3)' : 'var(--border)'}`, color: filters.fuel ? '#60a5fa' : 'var(--text-3)' }}>
+              {FUELS.map(f => <option key={f.val} value={f.val}>{f.label}</option>)}
+            </select>
+            <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" style={{ color: 'var(--text-4)' }} />
+          </div>
+
+          {/* Year from */}
+          <div className="relative">
+            <select value={filters.yearFrom} onChange={e => set('yearFrom')(e.target.value)}
+                    className="appearance-none text-xs rounded-lg pl-2.5 pr-6 py-1.5 font-medium"
+                    style={{ background: filters.yearFrom ? 'rgba(59,130,246,0.08)' : 'var(--bg-input)', border: `1px solid ${filters.yearFrom ? 'rgba(59,130,246,0.3)' : 'var(--border)'}`, color: filters.yearFrom ? '#60a5fa' : 'var(--text-3)' }}>
+              <option value="">Viti nga</option>
+              {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" style={{ color: 'var(--text-4)' }} />
+          </div>
+
+          {/* Year to */}
+          <div className="relative">
+            <select value={filters.yearTo} onChange={e => set('yearTo')(e.target.value)}
+                    className="appearance-none text-xs rounded-lg pl-2.5 pr-6 py-1.5 font-medium"
+                    style={{ background: filters.yearTo ? 'rgba(59,130,246,0.08)' : 'var(--bg-input)', border: `1px solid ${filters.yearTo ? 'rgba(59,130,246,0.3)' : 'var(--border)'}`, color: filters.yearTo ? '#60a5fa' : 'var(--text-3)' }}>
+              <option value="">Viti deri</option>
+              {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" style={{ color: 'var(--text-4)' }} />
+          </div>
+
+          {/* Km */}
+          <div className="relative">
+            <select value={filters.mileageTo} onChange={e => set('mileageTo')(e.target.value)}
+                    className="appearance-none text-xs rounded-lg pl-2.5 pr-6 py-1.5 font-medium"
+                    style={{ background: filters.mileageTo ? 'rgba(59,130,246,0.08)' : 'var(--bg-input)', border: `1px solid ${filters.mileageTo ? 'rgba(59,130,246,0.3)' : 'var(--border)'}`, color: filters.mileageTo ? '#60a5fa' : 'var(--text-3)' }}>
+              {KM_MAX.map(k => <option key={k.val} value={k.val}>{k.label}</option>)}
+            </select>
+            <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" style={{ color: 'var(--text-4)' }} />
+          </div>
+
+          {/* Clear button — only shows when filters active */}
+          {hasFilters && (
+            <button onClick={() => onChange(EMPTY)}
+                    className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg transition-all shrink-0"
+                    style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
+              <RotateCcw className="w-2.5 h-2.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Full-screen drawer — mobile only */}
       {open && (
-        <div className="fixed inset-0 z-[100] flex flex-col justify-end">
+        <div className="sm:hidden fixed inset-0 z-[100] flex flex-col justify-end">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={close} />
-          <div className="relative rounded-t-2xl p-5 pb-8 shadow-2xl animate-slide-up max-w-lg mx-auto w-full"
+          <div className="relative rounded-t-2xl p-5 pb-8 shadow-2xl animate-slide-up w-full"
                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderBottom: 'none' }}>
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-bold text-base" style={{ color: 'var(--text-1)' }}>
@@ -148,20 +215,23 @@ export default function Filters({ filters, onChange, forceOpen = false, onForceC
         </div>
       )}
 
-      {/* Mobile-only: always-visible floating Filtra button */}
+      {/* Mobile-only floating Filtra button — minimal ghost style */}
       <div className="sm:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
         <button
           onClick={() => setOpen(true)}
-          className="pointer-events-auto flex items-center gap-2 px-5 py-3 rounded-full text-white font-semibold text-sm shadow-2xl transition-transform active:scale-95"
+          className="pointer-events-auto flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-medium transition-all active:scale-95"
           style={{
-            background: 'linear-gradient(135deg,#5b86e5,#bc4e9c)',
-            boxShadow: '0 8px 28px rgba(91,134,229,0.45)',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
+            color: 'var(--text-2)',
+            backdropFilter: 'blur(12px)',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
           }}
         >
-          <span>⚙</span>
+          <SlidersHorizontal className="w-3.5 h-3.5" />
           Filtra
           {activeCount > 0 && (
-            <span className="bg-white text-blue-600 text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-full leading-none">
+            <span className="text-[10px] font-bold font-mono bg-blue-600 text-white px-1.5 py-0.5 rounded-full leading-none">
               {activeCount}
             </span>
           )}
