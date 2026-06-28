@@ -120,10 +120,10 @@ export default function Header() {
               className="sm:hidden flex w-9 h-9 items-center justify-center rounded-xl btn-ghost"
               aria-label="Menu"
             >
-              <div className="flex flex-col justify-center gap-[5px]">
-                <span style={{ display:'block', width:'20px', height:'2px', borderRadius:'2px', background:'var(--text-1)' }} />
-                <span style={{ display:'block', width:'20px', height:'2px', borderRadius:'2px', background:'var(--text-1)' }} />
-                <span style={{ display:'block', width:'20px', height:'2px', borderRadius:'2px', background:'var(--text-1)' }} />
+              <div className="flex flex-col justify-center gap-[6px]">
+                <span style={{ display:'block', width:'22px', height:'3px', borderRadius:'3px', background:'linear-gradient(90deg,#5b86e5,#bc4e9c)' }} />
+                <span style={{ display:'block', width:'22px', height:'3px', borderRadius:'3px', background:'linear-gradient(90deg,#7b63e8,#e0639a)' }} />
+                <span style={{ display:'block', width:'22px', height:'3px', borderRadius:'3px', background:'linear-gradient(90deg,#bc4e9c,#f09 )' }} />
               </div>
             </button>
           </div>

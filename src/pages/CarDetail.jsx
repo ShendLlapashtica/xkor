@@ -74,8 +74,8 @@ export default function CarDetail() {
   useEffect(() => {
     fetch(`/api/inspect?id=${id}`)
       .then(r => r.json())
-      .then(data => { if (!data.error) setInspect(data); })
-      .catch(() => {})
+      .then(data => { setInspect(data); })
+      .catch(() => { setInspect({ apiError: true, damage: null, repairHistory: [], historyAvailable: false }); })
       .finally(() => setLoadingInspect(false));
   }, [id]);
 
@@ -356,7 +356,7 @@ export default function CarDetail() {
                 </div>
               ) : inspect ? (
                 <>
-                  <AccidentDiagram damage={inspect.damage} dataAvailable={true} />
+                  <AccidentDiagram damage={inspect.damage} dataAvailable={!inspect.apiError} />
 
                   {/* Inspection metadata */}
                   {inspect.inspectionDate && (
