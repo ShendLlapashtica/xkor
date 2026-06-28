@@ -5,7 +5,7 @@ const Ctx = createContext(null);
 
 export function CountryProvider({ children }) {
   const [country, setCountryState] = useState(
-    () => localStorage.getItem('xkor_country') || 'AL'
+    () => localStorage.getItem('xkor_country') || 'XK'
   );
 
   function setCountry(c) {

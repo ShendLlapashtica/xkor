@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronDown, RotateCcw, X } from 'lucide-react';
 
 const BRANDS = [
@@ -50,8 +50,17 @@ function Sel({ label, value, onChange, children }) {
   );
 }
 
-export default function Filters({ filters, onChange }) {
+export default function Filters({ filters, onChange, forceOpen = false, onForceClose }) {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (forceOpen) setOpen(true);
+  }, [forceOpen]);
+
+  function close() {
+    setOpen(false);
+    onForceClose?.();
+  }
 
   function set(key) { return val => onChange(prev => ({ ...prev, [key]: val })); }
   const activeCount = Object.values(filters).filter(Boolean).length;
@@ -81,7 +90,7 @@ export default function Filters({ filters, onChange }) {
         <div className="flex flex-col gap-1.5">
           <label className="text-[10px] invisible">x</label>
           <button
-            onClick={() => { onChange(EMPTY); setOpen(false); }}
+            onClick={() => { onChange(EMPTY); close(); }}
             className="flex items-center justify-center gap-1.5 h-[42px] text-xs rounded-xl transition-all"
             style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-3)' }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(239,68,68,0.35)'; e.currentTarget.style.color = '#ef4444'; }}
@@ -103,16 +112,12 @@ export default function Filters({ filters, onChange }) {
         </div>
       </div>
 
-      {/* Mobile: slide-up drawer */}
+      {/* Slide-up drawer — works on all screen sizes */}
       {open && (
-        <div className="fixed inset-0 z-[100] sm:hidden flex flex-col justify-end">
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
-
-          {/* Sheet */}
-          <div className="relative rounded-t-2xl p-5 pb-8 shadow-2xl animate-slide-up"
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={close} />
+          <div className="relative rounded-t-2xl p-5 pb-8 shadow-2xl animate-slide-up max-w-lg mx-auto w-full"
                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderBottom: 'none' }}>
-            {/* Header */}
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-bold text-base" style={{ color: 'var(--text-1)' }}>
                 Filtra
@@ -122,7 +127,7 @@ export default function Filters({ filters, onChange }) {
                   </span>
                 )}
               </h3>
-              <button onClick={() => setOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full btn-ghost">
+              <button onClick={close} className="w-8 h-8 flex items-center justify-center rounded-full btn-ghost" style={{ color: 'var(--text-1)' }}>
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -131,14 +136,11 @@ export default function Filters({ filters, onChange }) {
 
             <div className="flex gap-3 mt-5">
               {hasFilters && (
-                <button
-                  onClick={() => { onChange(EMPTY); setOpen(false); }}
-                  className="flex-1 btn-ghost py-3 text-sm"
-                >
+                <button onClick={() => { onChange(EMPTY); close(); }} className="flex-1 btn-ghost py-3 text-sm">
                   Pastro
                 </button>
               )}
-              <button onClick={() => setOpen(false)} className={`btn-primary py-3 text-sm ${hasFilters ? 'flex-1' : 'w-full'}`}>
+              <button onClick={close} className={`btn-primary py-3 text-sm ${hasFilters ? 'flex-1' : 'w-full'}`}>
                 Apliko
               </button>
             </div>
@@ -146,14 +148,14 @@ export default function Filters({ filters, onChange }) {
         </div>
       )}
 
-      {/* Mobile: floating sticky Filtra button at bottom */}
+      {/* Mobile-only: always-visible floating Filtra button */}
       <div className="sm:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
         <button
           onClick={() => setOpen(true)}
           className="pointer-events-auto flex items-center gap-2 px-5 py-3 rounded-full text-white font-semibold text-sm shadow-2xl transition-transform active:scale-95"
           style={{
-            background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-            boxShadow: '0 8px 28px rgba(37,99,235,0.45)',
+            background: 'linear-gradient(135deg,#5b86e5,#bc4e9c)',
+            boxShadow: '0 8px 28px rgba(91,134,229,0.45)',
           }}
         >
           <span>⚙</span>

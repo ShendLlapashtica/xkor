@@ -49,6 +49,11 @@ export default function Home() {
   const [error, setError]     = useState(null);
   const [filters, setFilters] = useState(() => filtersFromParams(searchParams));
 
+  // Sticky filter button state
+  const [filtersVisible, setFiltersVisible]     = useState(true);
+  const [filterForceOpen, setFilterForceOpen]   = useState(false);
+  const filtersWrapRef = useRef(null);
+
   const session    = useRef(0);
   const sentinel   = useRef(null);
   const loadingRef = useRef(false);
@@ -58,6 +63,18 @@ export default function Home() {
   useEffect(() => {
     setFilters(filtersFromParams(searchParams));
   }, [searchParams]);
+
+  // Watch when filter row scrolls out of view → show desktop floating button
+  useEffect(() => {
+    const el = filtersWrapRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setFiltersVisible(entry.isIntersecting),
+      { threshold: 0 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   function handleFilterChange(updater) {
     setFilters(prev => {
@@ -187,7 +204,37 @@ export default function Home() {
       </div>
 
       {/* Filters */}
-      <Filters filters={filters} onChange={handleFilterChange} />
+      <div ref={filtersWrapRef}>
+        <Filters
+          filters={filters}
+          onChange={handleFilterChange}
+          forceOpen={filterForceOpen}
+          onForceClose={() => setFilterForceOpen(false)}
+        />
+      </div>
+
+      {/* Desktop floating Filtra button — appears when filter row scrolls out of view */}
+      {!filtersVisible && (
+        <div className="hidden sm:flex fixed bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
+          <button
+            onClick={() => setFilterForceOpen(true)}
+            className="pointer-events-auto flex items-center gap-2 px-5 py-3 rounded-full text-white font-semibold text-sm shadow-2xl transition-transform active:scale-95"
+            style={{
+              background: 'linear-gradient(135deg,#5b86e5,#bc4e9c)',
+              boxShadow: '0 8px 32px rgba(91,134,229,0.45)',
+            }}
+          >
+            <span>⚙</span>
+            Filtra
+            {Object.values(filters).filter(Boolean).length > 0 && (
+              <span className="bg-white text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-full leading-none"
+                    style={{ color: '#5b86e5' }}>
+                {Object.values(filters).filter(Boolean).length}
+              </span>
+            )}
+          </button>
+        </div>
+      )}
 
       {/* Grid */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">

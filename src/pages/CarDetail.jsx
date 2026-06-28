@@ -336,19 +336,30 @@ export default function CarDetail() {
 
             {/* ── Inspection Report ── */}
             <div className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-3">
                 <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-3)' }}>
                   Raporti i Inspektimit
                 </h2>
-                {id && (
+              </div>
+              {/* Prominent Encar links */}
+              {id && (
+                <div className="flex flex-wrap gap-2 mb-4">
                   <a href={`https://www.encar.com/inspection/car/carConditionDetail.do?carid=${id}`}
                      target="_blank" rel="noopener noreferrer"
-                     className="flex items-center gap-1 text-xs hover:text-blue-400 transition-colors"
-                     style={{ color: 'var(--text-3)' }}>
-                    <ExternalLink className="w-3 h-3" />Encar origjinal
+                     className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all hover:brightness-110"
+                     style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa' }}>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Raporti i Plotë në Encar
                   </a>
-                )}
-              </div>
+                  <a href={`https://www.encar.com/dc/dc_cardetailview.do?carid=${id}`}
+                     target="_blank" rel="noopener noreferrer"
+                     className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all hover:brightness-110"
+                     style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', color: '#818cf8' }}>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Faqja e Makinës në Encar
+                  </a>
+                </div>
+              )}
               {loadingInspect ? (
                 <div className="flex items-center gap-2 text-sm py-4" style={{ color: 'var(--text-3)' }}>
                   <span className="w-4 h-4 border-2 border-gray-700 border-t-gray-500 rounded-full animate-spin" />
@@ -431,6 +442,19 @@ export default function CarDetail() {
                           </div>
                         ))}
                       </div>
+                    ) : inspect.apiError ? (
+                      <div className="flex items-start gap-3 p-4 rounded-xl"
+                           style={{ background: 'rgba(100,116,139,0.06)', border: '1px solid rgba(100,116,139,0.2)' }}>
+                        <span style={{ color: 'var(--text-3)' }} className="flex-shrink-0 mt-0.5">⚠</span>
+                        <div>
+                          <p className="text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
+                            Encar nuk ka kthyer raport automatik
+                          </p>
+                          <p className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>
+                            Shiko vetë direkt në Encar për raportin e plotë të aksidenteve dhe riparimeve.
+                          </p>
+                        </div>
+                      </div>
                     ) : (
                       <div className="flex items-start gap-3 p-4 rounded-xl"
                            style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)' }}>
@@ -442,14 +466,6 @@ export default function CarDetail() {
                           <p className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>
                             Bazuar në të dhënat e Encar — nuk ka regjistrime riparimesh apo aksidentesh për këtë mjet.
                           </p>
-                          {id && (
-                            <a href={`https://www.encar.com/inspection/car/carConditionDetail.do?carid=${id}`}
-                               target="_blank" rel="noopener noreferrer"
-                               className="mt-2 inline-flex items-center gap-1 text-xs hover:underline"
-                               style={{ color: '#60a5fa' }}>
-                              <ExternalLink className="w-3 h-3" />Verifiko vetë në Encar
-                            </a>
-                          )}
                         </div>
                       </div>
                     )}
