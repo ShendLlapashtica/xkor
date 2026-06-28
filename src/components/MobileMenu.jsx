@@ -20,7 +20,7 @@ export default function MobileMenu({ onClose, onOpenCalc, country, setCountry, d
           <span className="font-mono font-bold text-lg" style={{ color: 'var(--text-1)' }}>
             X<span className="text-blue-500">K</span>OR
           </span>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full btn-ghost">
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full btn-ghost" style={{ color: 'var(--text-1)' }}>
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -51,7 +51,7 @@ export default function MobileMenu({ onClose, onOpenCalc, country, setCountry, d
         </div>
 
         {/* Nav items */}
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="p-4 space-y-1">
           <Link
             to="/" onClick={onClose}
             className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all hover:bg-card2"
@@ -74,16 +74,45 @@ export default function MobileMenu({ onClose, onOpenCalc, country, setCountry, d
           >
             {dark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
             <span className="flex-1 text-left text-sm font-medium" style={{ color: 'var(--text-1)' }}>
-              {dark ? '☀️' : '🌙'}
+              {dark ? 'Tema e çelët' : 'Tema e errët'}
             </span>
           </button>
         </nav>
 
+        {/* Why us */}
+        <div className="flex-1 px-4 py-3" style={{ borderTop: '1px solid var(--border-lo)' }}>
+          <p className="text-[10px] uppercase tracking-widest mb-3 font-mono font-semibold" style={{ color: 'var(--text-3)' }}>
+            Pse XKOR?
+          </p>
+          <div className="space-y-2.5">
+            {[
+              ['✅', 'Çmim transparent — pa surpriza'],
+              ['🚢', 'Transport i siguruar deri te ju'],
+              ['🔍', 'Inspektim profesional në Kore'],
+              ['📋', 'Raport i plotë aksidentesh'],
+              ['⚡', 'Procedurë e shpejtë & e sigurt'],
+            ].map(([icon, text]) => (
+              <div key={text} className="flex items-start gap-2.5 text-xs" style={{ color: 'var(--text-2)' }}>
+                <span className="flex-shrink-0 text-sm">{icon}</span>
+                <span>{text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Footer CTA */}
-        <div className="p-4" style={{ borderTop: '1px solid var(--border)' }}>
-          <a href="https://wa.me/355000000000" target="_blank" rel="noopener noreferrer"
-             className="btn-primary w-full" onClick={onClose}>
-            💬 Na Kontaktoni
+        <div className="p-4 space-y-2" style={{ borderTop: '1px solid var(--border)' }}>
+          <a href="https://wa.me/38349644168" target="_blank" rel="noopener noreferrer"
+             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white text-sm transition-all hover:brightness-110"
+             style={{ background: 'linear-gradient(135deg,#25d366,#128c7e)' }}
+             onClick={onClose}>
+            💬 WhatsApp · 049 644 168
+          </a>
+          <a href="tel:+38349644168"
+             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold btn-ghost"
+             style={{ color: 'var(--text-1)' }}
+             onClick={onClose}>
+            📞 049 644 168
           </a>
         </div>
       </div>

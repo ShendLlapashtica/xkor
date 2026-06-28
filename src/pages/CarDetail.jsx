@@ -15,9 +15,10 @@ import {
 import { translateFuel, translateTrans, translateOption, translateColor } from '../lib/translations.js';
 import { useCountry } from '../contexts/CountryContext.jsx';
 
-const WHATSAPP = '38349644168';
-const PHONE    = '+38349644168';
-const EMAIL    = 'shendillapashtica@gmail.com';
+const WHATSAPP    = '38349644168';
+const PHONE       = '+383 49 644 168';
+const PHONE_DISP  = '049 644 168';
+const EMAIL       = 'shendillapashtica@gmail.com';
 
 const MONTHS_ALB = ['Jan','Shk','Mar','Pri','Maj','Qer','Kor','Gus','Sht','Tet','Nën','Dhj'];
 
@@ -202,9 +203,9 @@ export default function CarDetail() {
                      style={{ background: 'linear-gradient(135deg,#25d366,#128c7e)' }}>
                     <MessageCircle className="w-4 h-4" />WhatsApp
                   </a>
-                  <a href={`tel:${PHONE}`}
+                  <a href="tel:+38349644168"
                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl font-semibold text-sm transition-all btn-ghost">
-                    <Phone className="w-4 h-4" />{PHONE}
+                    <Phone className="w-4 h-4" />{PHONE_DISP}
                   </a>
                 </div>
               </div>
@@ -335,9 +336,19 @@ export default function CarDetail() {
 
             {/* ── Inspection Report ── */}
             <div className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-              <h2 className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: 'var(--text-3)' }}>
-                Raporti i Inspektimit
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-3)' }}>
+                  Raporti i Inspektimit
+                </h2>
+                {id && (
+                  <a href={`https://www.encar.com/inspection/car/carConditionDetail.do?carid=${id}`}
+                     target="_blank" rel="noopener noreferrer"
+                     className="flex items-center gap-1 text-xs hover:text-blue-400 transition-colors"
+                     style={{ color: 'var(--text-3)' }}>
+                    <ExternalLink className="w-3 h-3" />Encar origjinal
+                  </a>
+                )}
+              </div>
               {loadingInspect ? (
                 <div className="flex items-center gap-2 text-sm py-4" style={{ color: 'var(--text-3)' }}>
                   <span className="w-4 h-4 border-2 border-gray-700 border-t-gray-500 rounded-full animate-spin" />
@@ -346,6 +357,70 @@ export default function CarDetail() {
               ) : inspect ? (
                 <>
                   <AccidentDiagram damage={inspect.damage} />
+
+                  {/* Repair History */}
+                  {inspect.repairHistory && inspect.repairHistory.length > 0 && (
+                    <div className="mt-6">
+                      <p className="text-[10px] uppercase tracking-widest font-mono font-semibold mb-3"
+                         style={{ color: 'var(--text-3)' }}>
+                        Historiku i Riparimeve · {inspect.repairHistory.length} regjistrim
+                      </p>
+                      <div className="space-y-3">
+                        {inspect.repairHistory.map((h, i) => (
+                          <div key={i} className="rounded-xl p-4"
+                               style={{ background: 'var(--bg-card2)', border: '1px solid var(--border-lo)' }}>
+                            <div className="flex items-start justify-between gap-3 flex-wrap">
+                              <div>
+                                {h.date && (
+                                  <span className="text-xs font-mono font-bold" style={{ color: 'var(--text-1)' }}>
+                                    {h.date}
+                                  </span>
+                                )}
+                                {h.type && (
+                                  <span className="ml-2 text-xs px-2 py-0.5 rounded-full"
+                                        style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)' }}>
+                                    {h.type}
+                                  </span>
+                                )}
+                                {h.insurance && (
+                                  <span className="ml-1 text-xs px-2 py-0.5 rounded-full"
+                                        style={{ background: 'rgba(59,130,246,0.12)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.25)' }}>
+                                    Sigurim
+                                  </span>
+                                )}
+                              </div>
+                              {h.totalCost != null && (
+                                <div className="text-right flex-shrink-0">
+                                  <p className="text-xs font-mono font-bold" style={{ color: 'var(--text-1)' }}>
+                                    {Number(h.totalCost).toLocaleString('ko-KR')} ₩
+                                  </p>
+                                  <p className="text-[10px]" style={{ color: 'var(--text-4)' }}>
+                                    ≈ €{Math.round(Number(h.totalCost) / 1450).toLocaleString()}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                            {h.parts && h.parts.length > 0 && (
+                              <div className="mt-3 space-y-1">
+                                {h.parts.map((p, j) => (
+                                  <div key={j} className="flex items-center justify-between text-xs py-1"
+                                       style={{ borderTop: '1px solid var(--border-lo)', color: 'var(--text-3)' }}>
+                                    <span>{p.part || '—'}{p.work ? ` · ${p.work}` : ''}</span>
+                                    {p.cost != null && (
+                                      <span className="font-mono" style={{ color: 'var(--text-2)' }}>
+                                        {Number(p.cost).toLocaleString('ko-KR')} ₩
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <p className="mt-5 text-[11px] pt-4" style={{ color: 'var(--text-4)', borderTop: '1px solid var(--border-lo)' }}>
                     Ky inspektim është bërë nga pala koreane para se mjeti të dalë në shitje.
                   </p>

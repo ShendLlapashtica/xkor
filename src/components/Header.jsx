@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { X, Sun, Moon } from 'lucide-react';
+import { X, Sun, Moon, Menu } from 'lucide-react';
 import { useCountry } from '../contexts/CountryContext.jsx';
 import { useTheme } from '../contexts/ThemeContext.jsx';
 import CustomsCalculator from './CustomsCalculator.jsx';
@@ -100,7 +100,7 @@ export default function Header() {
             <a href="tel:+38349644168"
                className="hidden sm:inline-flex items-center text-xs font-mono px-2 py-1 rounded-lg btn-ghost"
                style={{ opacity: 0.55, letterSpacing: '0.2px' }}>
-              +383 49 644 168
+              049 644 168
             </a>
 
             <a href="https://wa.me/38349644168" target="_blank" rel="noopener noreferrer"
@@ -118,13 +118,10 @@ export default function Header() {
             <button
               onClick={() => setMenu(true)}
               className="sm:hidden flex w-9 h-9 items-center justify-center rounded-xl btn-ghost"
+              style={{ color: 'var(--text-1)' }}
               aria-label="Menu"
             >
-              <svg width="16" height="13" viewBox="0 0 16 13" fill="none" aria-hidden="true">
-                <rect width="16" height="2" rx="1" fill="currentColor"/>
-                <rect y="5.5" width="16" height="2" rx="1" fill="currentColor"/>
-                <rect y="11" width="16" height="2" rx="1" fill="currentColor"/>
-              </svg>
+              <Menu className="w-5 h-5" />
             </button>
           </div>
         </div>

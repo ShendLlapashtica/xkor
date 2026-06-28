@@ -19,49 +19,45 @@ async function tryFetch(url, signal, isWrapped = false) {
   return JSON.parse(text);
 }
 
-// Maps Encar inspection condition codes to our standard codes
 function normalizeCode(raw) {
   if (!raw || raw === 'X' || raw === 'N' || raw === '0') return null;
-  if (raw === 'W' || raw === '교환') return 'N'; // Change/Replace
-  if (raw === 'C' || raw === '판금') return 'R'; // Repair
-  if (raw === 'U' || raw === '부식') return 'K'; // Corrosion
-  if (raw === 'A' || raw === '흠집') return 'G'; // Scratch
-  if (raw === 'T' || raw === '요철') return 'P'; // Uneven
-  return raw; // pass through if already mapped
+  if (raw === 'W' || raw === '교환') return 'N';
+  if (raw === 'C' || raw === '판금') return 'R';
+  if (raw === 'U' || raw === '부식') return 'K';
+  if (raw === 'A' || raw === '흠집') return 'G';
+  if (raw === 'T' || raw === '요철') return 'P';
+  return raw;
 }
 
 function parseCarCondition(raw) {
   if (!raw) return null;
-  // raw.CarBody, raw.Exterior, raw.CarCondition, raw.Condition — try all shapes
   const ext = raw.Exterior || raw.CarCondition || raw.Condition || raw;
   if (!ext || typeof ext !== 'object') return null;
 
   const areas = {
-    frontBumper:    ext.FrontBumper || ext.앞범퍼,
-    hood:           ext.Hood || ext.보닛,
-    frontLeftFender: ext.FrontLeftFender || ext.앞왼쪽휀더,
-    frontRightFender: ext.FrontRightFender || ext.앞오른쪽휀더,
-    frontLeftDoor:  ext.FrontLeftDoor || ext.앞왼쪽도어,
-    frontRightDoor: ext.FrontRightDoor || ext.앞오른쪽도어,
-    rearLeftDoor:   ext.RearLeftDoor || ext.뒤왼쪽도어,
-    rearRightDoor:  ext.RearRightDoor || ext.뒤오른쪽도어,
-    rearLeftPanel:  ext.RearLeftFender || ext.RearLeftPanel || ext.뒤왼쪽휀더,
-    rearRightPanel: ext.RearRightFender || ext.RearRightPanel || ext.뒤오른쪽휀더,
-    trunk:          ext.Trunk || ext.트렁크,
-    rearBumper:     ext.RearBumper || ext.뒤범퍼,
-    roof:           ext.Roof || ext.루프,
+    frontBumper:      ext.FrontBumper      || ext['앞범퍼'],
+    hood:             ext.Hood             || ext['보닛'],
+    frontLeftFender:  ext.FrontLeftFender  || ext['앞왼쪽휀더'],
+    frontRightFender: ext.FrontRightFender || ext['앞오른쪽휀더'],
+    frontLeftDoor:    ext.FrontLeftDoor    || ext['앞왼쪽도어'],
+    frontRightDoor:   ext.FrontRightDoor   || ext['앞오른쪽도어'],
+    rearLeftDoor:     ext.RearLeftDoor     || ext['뒤왼쪽도어'],
+    rearRightDoor:    ext.RearRightDoor    || ext['뒤오른쪽도어'],
+    rearLeftPanel:    ext.RearLeftFender   || ext.RearLeftPanel  || ext['뒤왼쪽휀더'],
+    rearRightPanel:   ext.RearRightFender  || ext.RearRightPanel || ext['뒤오른쪽휀더'],
+    trunk:            ext.Trunk            || ext['트렁크'],
+    rearBumper:       ext.RearBumper       || ext['뒤범퍼'],
+    roof:             ext.Roof             || ext['루프'],
   };
 
   const result = {};
   for (const [key, val] of Object.entries(areas)) {
-    // val might be a string code or an object with ExchangeYN, PlatingYN, etc.
     if (typeof val === 'string') {
       result[key] = normalizeCode(val);
     } else if (val && typeof val === 'object') {
-      // pick worst damage
       const code =
         (val.ExchangeYN === 'Y' || val.Exchange === 'Y') ? 'N' :
-        (val.PlatingYN === 'Y' || val.Plating === 'Y')   ? 'R' :
+        (val.PlatingYN === 'Y'  || val.Plating === 'Y')  ? 'R' :
         (val.CorrosionYN === 'Y')  ? 'K' :
         (val.ScarchYN === 'Y')     ? 'G' :
         (val.UnevenYN === 'Y')     ? 'P' :
@@ -72,6 +68,73 @@ function parseCarCondition(raw) {
     }
   }
   return result;
+}
+
+// Map Korean part names to Albanian
+const PART_MAP = {
+  '앞범퍼': 'Bufera Përpara', '뒤범퍼': 'Bufera Mbrapa',
+  '보닛': 'Kapuç', '트렁크': 'Bagazh', '루프': 'Çati',
+  '앞왼쪽휀더': 'Parafango Para Majtë', '앞오른쪽휀더': 'Parafango Para Djathas',
+  '앞왼쪽도어': 'Portë Para Majtë', '앞오른쪽도어': 'Portë Para Djathas',
+  '뒤왼쪽도어': 'Portë Mbrapa Majtë', '뒤오른쪽도어': 'Portë Mbrapa Djathas',
+  '뒤왼쪽휀더': 'Panel Mbrapa Majtë', '뒤오른쪽휀더': 'Panel Mbrapa Djathas',
+  '전면': 'Pjesa Përpara', '후면': 'Pjesa Mbrapa', '좌측': 'Ana Majtë', '우측': 'Ana Djathas',
+};
+
+const WORK_MAP = {
+  '판금': 'Ripare kallaji', '도장': 'Rilyerje', '교환': 'Zëvendësim',
+  '부식': 'Korrozion', '흠집': 'Gërvishtje', '수리': 'Riparim', '복원': 'Rivendosje',
+};
+
+function translatePart(s) {
+  if (!s) return s;
+  for (const [kr, alb] of Object.entries(PART_MAP)) {
+    if (s.includes(kr)) return alb;
+  }
+  return s;
+}
+
+function translateWork(s) {
+  if (!s) return s;
+  for (const [kr, alb] of Object.entries(WORK_MAP)) {
+    if (s.includes(kr)) return alb;
+  }
+  return s;
+}
+
+function extractRepairHistory(raw) {
+  // Try all known field paths for accident/repair history in Encar API
+  const candidates = [
+    raw?.CarHistryList,
+    raw?.CarHistoryList,
+    raw?.InspectCondition?.CarHistryList,
+    raw?.Inspection?.CarHistryList,
+    raw?.AccidentHistoryList,
+    raw?.HistoryList,
+    raw?.RepairList,
+    raw?.AccidentList,
+  ].filter(a => Array.isArray(a) && a.length > 0);
+
+  if (!candidates.length) return [];
+
+  return candidates[0].map(h => {
+    const parts = Array.isArray(h.PerfParts || h.Parts || h.PartList)
+      ? (h.PerfParts || h.Parts || h.PartList).map(p => ({
+          part: translatePart(p.PartName || p.Name || p.Part || JSON.stringify(p)),
+          work: translateWork(p.WorkType || p.Work || p.Type || ''),
+          cost: p.WorkCost || p.Cost || p.Price || null,
+        }))
+      : [];
+
+    return {
+      date: h.PerfDateTime || h.DateTime || h.InsuranceDate || h.Date || null,
+      type: h.WorkType || h.AccidentType || h.Type || null,
+      totalCost: h.WorkCost || h.TotalCost || h.RepairCost || h.Cost || null,
+      insurance: h.InsuranceApplyYN === 'Y' || h.Insurance === 'Y',
+      parts,
+      raw: h,
+    };
+  });
 }
 
 export default async function handler(req, res) {
@@ -106,16 +169,17 @@ export default async function handler(req, res) {
 
     clearTimeout(timer);
 
-    // Try to find inspection data
     const conditionData = raw.Inspection || raw.CarCondition || raw.Condition || raw;
     const parsed = parseCarCondition(conditionData);
+    const repairHistory = extractRepairHistory(raw);
 
-    const ownerCount = raw.OwnerCount ?? raw.OwnerChanges ?? raw.OwnerHistory?.length ?? null;
+    const ownerCount    = raw.OwnerCount    ?? raw.OwnerChanges ?? raw.OwnerHistory?.length ?? null;
     const accidentCount = raw.AccidentCount ?? raw.AccidentHistoryCount ?? null;
 
     return res.status(200).json({
       raw,
       damage: parsed,
+      repairHistory,
       ownerCount,
       accidentCount,
     });
