@@ -49,8 +49,10 @@ export default function Home() {
   const [error, setError]     = useState(null);
   const [filters, setFilters] = useState(() => filtersFromParams(searchParams));
 
-  const session  = useRef(0);
-  const sentinel = useRef(null);
+  const session    = useRef(0);
+  const sentinel   = useRef(null);
+  const loadingRef = useRef(false);
+  const doneRef    = useRef(false);
 
   // Sync URL → filters when searchParams change externally (e.g. from Header search)
   useEffect(() => {
@@ -71,8 +73,9 @@ export default function Home() {
 
   const loadPage = useCallback(async (pg, flt, kw, replace) => {
     const sid = ++session.current;
+    loadingRef.current = true;
     setLoading(true);
-    if (replace) { setCars([]); setDone(false); }
+    if (replace) { setCars([]); setDone(false); doneRef.current = false; }
     setError(null);
 
     try {
@@ -93,7 +96,8 @@ export default function Home() {
 
       setCars(prev => {
         const next = replace ? newCars : [...prev, ...newCars];
-        if (next.length >= tot || newCars.length < PAGE_SIZE) setDone(true);
+        const isDone = next.length >= tot || newCars.length < PAGE_SIZE;
+        if (isDone) { setDone(true); doneRef.current = true; }
         return next;
       });
       setTotal(tot);
@@ -101,7 +105,7 @@ export default function Home() {
       if (sid !== session.current) return;
       setError(e.message);
     } finally {
-      if (sid === session.current) setLoading(false);
+      if (sid === session.current) { loadingRef.current = false; setLoading(false); }
     }
   }, []);
 
@@ -111,25 +115,30 @@ export default function Home() {
     loadPage(0, filters, keyword, true);
   }, [filters, keyword, loadPage]);
 
-  // Infinite scroll
+  // Infinite scroll — stable observer, refs avoid stale-closure issues
+  const filtersRef = useRef(filters);
+  const keywordRef = useRef(keyword);
+  useEffect(() => { filtersRef.current = filters; }, [filters]);
+  useEffect(() => { keywordRef.current = keyword; }, [keyword]);
+
   useEffect(() => {
     const el = sentinel.current;
     if (!el) return;
     const obs = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !loading && !done) {
+        if (entry.isIntersecting && !loadingRef.current && !doneRef.current) {
           setPage(prev => {
             const next = prev + 1;
-            loadPage(next, filters, keyword, false);
+            loadPage(next, filtersRef.current, keywordRef.current, false);
             return next;
           });
         }
       },
-      { rootMargin: '500px' }
+      { rootMargin: '600px' }
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [loading, done, filters, keyword, loadPage]);
+  }, [loadPage]); // stable — never disconnects/reconnects due to loading/done changes
 
   const isSearching = !!keyword;
 
@@ -188,7 +197,7 @@ export default function Home() {
           </div>
         )}
 
-        {cars.length === 0 && loading ? (
+        {cars.length === 0 && loading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {Array.from({ length: 16 }).map((_, i) => (
               <div key={i} className="rounded-2xl overflow-hidden animate-pulse" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
@@ -209,31 +218,35 @@ export default function Home() {
               </div>
             ))}
           </div>
-        ) : cars.length === 0 ? (
+        )}
+
+        {cars.length === 0 && !loading && (
           <div className="text-center py-24">
             <p className="text-lg font-medium" style={{ color: 'var(--text-3)' }}>Nuk u gjetën makina</p>
             <p className="text-sm mt-1" style={{ color: 'var(--text-4)' }}>Provo të ndryshosh filtrat ose kërkimin</p>
           </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {cars.map(car => <CarCard key={`${car.Id}-${car.Price}`} car={car} />)}
-            </div>
-            <div ref={sentinel} className="h-16 flex items-center justify-center mt-6">
-              {loading && (
-                <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-3)' }}>
-                  <span className="w-4 h-4 border-2 border-gray-700 border-t-gray-400 rounded-full animate-spin" />
-                  Duke ngarkuar...
-                </div>
-              )}
-              {done && cars.length > 0 && (
-                <p className="text-xs font-mono" style={{ color: 'var(--text-4)' }}>
-                  Të gjitha {total?.toLocaleString('de-DE')} makina u ngarkuan
-                </p>
-              )}
-            </div>
-          </>
         )}
+
+        {cars.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {cars.map(car => <CarCard key={`${car.Id}-${car.Price}`} car={car} />)}
+          </div>
+        )}
+
+        {/* Sentinel — always in DOM so IntersectionObserver always has a target */}
+        <div ref={sentinel} className="h-16 flex items-center justify-center mt-6 pointer-events-none">
+          {loading && cars.length > 0 && (
+            <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-3)' }}>
+              <span className="w-4 h-4 border-2 border-gray-700 border-t-gray-400 rounded-full animate-spin" />
+              Duke ngarkuar...
+            </div>
+          )}
+          {done && cars.length > 0 && (
+            <p className="text-xs font-mono" style={{ color: 'var(--text-4)' }}>
+              Të gjitha {total?.toLocaleString('de-DE')} makina u ngarkuan
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Why Choose Us */}

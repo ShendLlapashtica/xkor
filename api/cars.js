@@ -185,8 +185,9 @@ export default async function handler(req, res) {
   }
 
   if (q.yearFrom || q.yearTo) {
-    const from = q.yearFrom ?? '2000';
-    const to   = q.yearTo   ?? '2030';
+    // Year field is YYYYMM (e.g. 201405), so convert 4-digit year to 6-digit range
+    const from = (q.yearFrom ?? '2000') + '00';
+    const to   = (q.yearTo   ?? '2030') + '99';
     parts.push(`Year.range(${from}..${to})`);
   }
 

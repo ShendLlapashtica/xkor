@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { ChevronDown, RotateCcw, SlidersHorizontal } from 'lucide-react';
+import { ChevronDown, RotateCcw, X } from 'lucide-react';
 
 const BRANDS = [
-  'BMW','Mercedes-Benz','Audi','Volkswagen','Porsche','Hyundai','Kia',
-  'Genesis','Lexus','Toyota','Honda','Chevrolet','SsangYong','Renault Samsung',
-  'Volvo','Land Rover','Mini','Peugeot','Subaru','Mitsubishi','Nissan',
-  'Infiniti','Maserati','Ferrari','Lamborghini',
+  'BMW','Mercedes-Benz','Audi','Volkswagen','Porsche',
+  'Hyundai','Kia','Genesis','Lexus','Toyota','Honda',
+  'Chevrolet','SsangYong','Renault Samsung','Volvo',
+  'Land Rover','Mini','Peugeot','Subaru','Mitsubishi',
+  'Nissan','Infiniti','Maserati','Ferrari','Lamborghini',
 ];
 
 const FUELS = [
@@ -21,17 +22,17 @@ const YEARS = Array.from({ length: 21 }, (_, i) => String(2025 - i));
 
 const KM_MAX = [
   { val: '',       label: 'Pa limit' },
-  { val: '50000',  label: 'deri 50,000 km' },
-  { val: '100000', label: 'deri 100,000 km' },
-  { val: '150000', label: 'deri 150,000 km' },
-  { val: '200000', label: 'deri 200,000 km' },
+  { val: '50000',  label: '≤ 50,000 km' },
+  { val: '100000', label: '≤ 100,000 km' },
+  { val: '150000', label: '≤ 150,000 km' },
+  { val: '200000', label: '≤ 200,000 km' },
 ];
 
 const EMPTY = { manufacturer: '', fuel: '', yearFrom: '', yearTo: '', mileageTo: '' };
 
 function Sel({ label, value, onChange, children }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1.5">
       <label className="text-[10px] uppercase tracking-wider font-mono font-semibold" style={{ color: 'var(--text-3)' }}>
         {label}
       </label>
@@ -77,17 +78,16 @@ export default function Filters({ filters, onChange }) {
         {KM_MAX.map(k => <option key={k.val} value={k.val}>{k.label}</option>)}
       </Sel>
       {hasFilters ? (
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] uppercase tracking-wider font-mono font-semibold invisible">x</label>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] invisible">x</label>
           <button
             onClick={() => { onChange(EMPTY); setOpen(false); }}
             className="flex items-center justify-center gap-1.5 h-[42px] text-xs rounded-xl transition-all"
             style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-3)' }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)'; e.currentTarget.style.color = '#ef4444'; }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(239,68,68,0.35)'; e.currentTarget.style.color = '#ef4444'; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-3)'; }}
           >
-            <RotateCcw className="w-3.5 h-3.5" />
-            Pastro
+            <RotateCcw className="w-3.5 h-3.5" />Pastro
           </button>
         </div>
       ) : <div />}
@@ -95,43 +95,76 @@ export default function Filters({ filters, onChange }) {
   );
 
   return (
-    <div style={{ borderBottom: '1px solid var(--border-lo)', background: 'var(--bg-page)' }}>
-      {/* Mobile toggle */}
-      <div className="flex sm:hidden items-center justify-between px-4 py-3">
+    <>
+      {/* Desktop always-visible filter row */}
+      <div className="hidden sm:block" style={{ borderBottom: '1px solid var(--border-lo)', background: 'var(--bg-page)' }}>
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
+          {filterContent}
+        </div>
+      </div>
+
+      {/* Mobile: slide-up drawer */}
+      {open && (
+        <div className="fixed inset-0 z-[100] sm:hidden flex flex-col justify-end">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
+
+          {/* Sheet */}
+          <div className="relative rounded-t-2xl p-5 pb-8 shadow-2xl animate-slide-up"
+               style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderBottom: 'none' }}>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-bold text-base" style={{ color: 'var(--text-1)' }}>
+                Filtra
+                {activeCount > 0 && (
+                  <span className="ml-2 text-xs font-mono bg-blue-600 text-white px-2 py-0.5 rounded-full">
+                    {activeCount}
+                  </span>
+                )}
+              </h3>
+              <button onClick={() => setOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full btn-ghost">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {filterContent}
+
+            <div className="flex gap-3 mt-5">
+              {hasFilters && (
+                <button
+                  onClick={() => { onChange(EMPTY); setOpen(false); }}
+                  className="flex-1 btn-ghost py-3 text-sm"
+                >
+                  Pastro
+                </button>
+              )}
+              <button onClick={() => setOpen(false)} className={`btn-primary py-3 text-sm ${hasFilters ? 'flex-1' : 'w-full'}`}>
+                Apliko
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile: floating sticky Filtra button at bottom */}
+      <div className="sm:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
         <button
-          onClick={() => setOpen(o => !o)}
-          className="flex items-center gap-2 text-sm font-medium transition-colors"
-          style={{ color: 'var(--text-2)' }}
+          onClick={() => setOpen(true)}
+          className="pointer-events-auto flex items-center gap-2 px-5 py-3 rounded-full text-white font-semibold text-sm shadow-2xl transition-transform active:scale-95"
+          style={{
+            background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+            boxShadow: '0 8px 28px rgba(37,99,235,0.45)',
+          }}
         >
-          <SlidersHorizontal className="w-4 h-4 text-blue-400" />
+          <span>⚙</span>
           Filtra
           {activeCount > 0 && (
-            <span className="bg-blue-600 text-white text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-full">
+            <span className="bg-white text-blue-600 text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-full leading-none">
               {activeCount}
             </span>
           )}
         </button>
-        {hasFilters && (
-          <button onClick={() => onChange(EMPTY)} className="text-xs text-red-400 hover:text-red-300 transition-colors">
-            Pastro të gjitha
-          </button>
-        )}
       </div>
-
-      {/* Mobile drawer */}
-      {open && (
-        <div className="sm:hidden px-4 pb-4 pt-4" style={{ borderTop: '1px solid var(--border-lo)' }}>
-          {filterContent}
-          <button onClick={() => setOpen(false)} className="mt-4 w-full btn-primary">
-            Apliko Filtrat
-          </button>
-        </div>
-      )}
-
-      {/* Desktop row */}
-      <div className="hidden sm:block max-w-7xl mx-auto px-4 md:px-8 py-4">
-        {filterContent}
-      </div>
-    </div>
+    </>
   );
 }

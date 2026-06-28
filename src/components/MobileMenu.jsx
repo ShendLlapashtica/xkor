@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { X, Calculator, Home, MessageCircle, Sun, Moon, ChevronRight } from 'lucide-react';
+import { X, Calculator, Sun, Moon, ChevronRight } from 'lucide-react';
 import { useEffect } from 'react';
 
 export default function MobileMenu({ onClose, onOpenCalc, country, setCountry, dark, toggleTheme }) {
@@ -33,17 +33,19 @@ export default function MobileMenu({ onClose, onOpenCalc, country, setCountry, d
           <div className="flex rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
             <button
               onClick={() => setCountry('AL')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold transition-all
-                ${country === 'AL' ? 'bg-blue-600 text-white' : 'text-secondary'}`}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold transition-all
+                ${country === 'AL' ? 'bg-blue-600 text-white' : ''}`}
+              style={country !== 'AL' ? { color: 'var(--text-2)' } : {}}
             >
-              🇦🇱 Shqipëri (Durrës)
+              🇦🇱 Durrës
             </button>
             <button
               onClick={() => setCountry('XK')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold transition-all
-                ${country === 'XK' ? 'bg-blue-600 text-white' : 'text-secondary'}`}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold transition-all
+                ${country === 'XK' ? 'bg-blue-600 text-white' : ''}`}
+              style={country !== 'XK' ? { color: 'var(--text-2)' } : {}}
             >
-              🇽🇰 Kosovë
+              🇽🇰 Prishtinë
             </button>
           </div>
         </div>
@@ -52,16 +54,15 @@ export default function MobileMenu({ onClose, onOpenCalc, country, setCountry, d
         <nav className="flex-1 p-4 space-y-1">
           <Link
             to="/" onClick={onClose}
-            className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all group hover:bg-card2"
-            style={{ color: 'var(--text-2)' }}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all hover:bg-card2"
           >
-            <Home className="w-4 h-4 text-blue-400" />
+            <span className="text-base">🏠</span>
             <span className="flex-1 text-sm font-medium" style={{ color: 'var(--text-1)' }}>Ballina</span>
             <ChevronRight className="w-3.5 h-3.5" style={{ color: 'var(--text-3)' }} />
           </Link>
           <button
             onClick={onOpenCalc}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group hover:bg-card2"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all hover:bg-card2"
           >
             <Calculator className="w-4 h-4 text-blue-400" />
             <span className="flex-1 text-left text-sm font-medium" style={{ color: 'var(--text-1)' }}>Kalkulatori i Doganës</span>
@@ -69,11 +70,11 @@ export default function MobileMenu({ onClose, onOpenCalc, country, setCountry, d
           </button>
           <button
             onClick={toggleTheme}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group hover:bg-card2"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all hover:bg-card2"
           >
             {dark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
             <span className="flex-1 text-left text-sm font-medium" style={{ color: 'var(--text-1)' }}>
-              {dark ? 'Light Mode' : 'Dark Mode'}
+              {dark ? '☀️' : '🌙'}
             </span>
           </button>
         </nav>
@@ -82,8 +83,7 @@ export default function MobileMenu({ onClose, onOpenCalc, country, setCountry, d
         <div className="p-4" style={{ borderTop: '1px solid var(--border)' }}>
           <a href="https://wa.me/355000000000" target="_blank" rel="noopener noreferrer"
              className="btn-primary w-full" onClick={onClose}>
-            <MessageCircle className="w-4 h-4" />
-            Na Kontaktoni
+            💬 Na Kontaktoni
           </a>
         </div>
       </div>

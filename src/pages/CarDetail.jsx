@@ -1,8 +1,9 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import {
   ArrowLeft, Phone, MessageCircle, Gauge, Calendar, Fuel,
-  Settings, Users, ShieldCheck, AlertTriangle, Info, MapPin, ExternalLink,
+  Settings, Users, ShieldCheck, AlertTriangle, Info, MapPin,
+  ExternalLink, Mail, Zap, Wind, Car,
 } from 'lucide-react';
 import ImageGallery from '../components/ImageGallery.jsx';
 import AccidentDiagram from '../components/AccidentDiagram.jsx';
@@ -14,24 +15,40 @@ import {
 import { translateFuel, translateTrans, translateOption, translateColor } from '../lib/translations.js';
 import { useCountry } from '../contexts/CountryContext.jsx';
 
-const WHATSAPP = '38349000000';
-const PHONE    = '+38349000000';
+const WHATSAPP = '38349644168';
+const PHONE    = '+38349644168';
+const EMAIL    = 'shendillapashtica@gmail.com';
 
-function Row({ label, value, mono }) {
+const MONTHS_ALB = ['Jan','Shk','Mar','Pri','Maj','Qer','Kor','Gus','Sht','Tet','Nën','Dhj'];
+
+function getMonth(yearField) {
+  const s = String(yearField || '');
+  if (s.length === 6) {
+    const m = parseInt(s.slice(4, 6));
+    return m >= 1 && m <= 12 ? MONTHS_ALB[m - 1] : null;
+  }
+  return null;
+}
+
+function Row({ label, value, mono, highlight }) {
   if (!value && value !== 0) return null;
   return (
     <div className="flex items-start py-2.5" style={{ borderBottom: '1px solid var(--border-lo)' }}>
-      <span className="text-xs w-36 flex-shrink-0 pt-0.5" style={{ color: 'var(--text-3)' }}>{label}</span>
-      <span className={`text-sm font-medium ${mono ? 'font-mono text-xs' : ''}`} style={{ color: 'var(--text-2)' }}>{value}</span>
+      <span className="text-xs w-40 flex-shrink-0 pt-0.5" style={{ color: 'var(--text-3)' }}>{label}</span>
+      <span className={`text-sm font-medium ${mono ? 'font-mono text-xs' : ''}`}
+        style={{ color: highlight ? '#60a5fa' : 'var(--text-2)' }}>
+        {value}
+      </span>
     </div>
   );
 }
 
 export default function CarDetail() {
-  const { id }     = useParams();
-  const { state }  = useLocation();
-  const { priceFor, label: priceLabel, country } = useCountry();
+  const { id }    = useParams();
+  const { state } = useLocation();
+  const { priceFor, country } = useCountry();
 
+  // useState initializer runs fresh on each mount (guaranteed by key={id} in App.jsx)
   const [car, setCar]           = useState(state?.car || null);
   const [inspect, setInspect]   = useState(null);
   const [similar, setSimilar]   = useState([]);
@@ -39,7 +56,7 @@ export default function CarDetail() {
   const [loadingInspect, setLoadingInspect] = useState(true);
   const [error, setError]       = useState(null);
 
-  useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [id]);
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, []);
 
   useEffect(() => {
     if (car) return;
@@ -51,7 +68,7 @@ export default function CarDetail() {
       })
       .catch(e => setError(e.message))
       .finally(() => setLoadingCar(false));
-  }, [id]);
+  }, [id, car]);
 
   useEffect(() => {
     fetch(`/api/inspect?id=${id}`)
@@ -61,14 +78,13 @@ export default function CarDetail() {
       .finally(() => setLoadingInspect(false));
   }, [id]);
 
-  // Load similar cars (same manufacturer)
   useEffect(() => {
     if (!car?.Manufacturer) return;
-    fetch(`/api/cars?manufacturer=${encodeURIComponent(car.Manufacturer)}&count=8`)
+    fetch(`/api/cars?manufacturer=${encodeURIComponent(car.Manufacturer)}&count=16`)
       .then(r => r.json())
       .then(data => {
         const results = (data.results || []).filter(c => String(c.Id) !== String(id));
-        setSimilar(results.slice(0, 8));
+        setSimilar(results.slice(0, 16));
       })
       .catch(() => {});
   }, [car?.Manufacturer, id]);
@@ -87,6 +103,8 @@ export default function CarDetail() {
   );
 
   const year         = carYear(car);
+  const month        = getMonth(car.Year);
+  const regDate      = month && year ? `${month} ${year}` : year;
   const fuel         = translateFuel(car.FuelType);
   const trans        = translateTrans(car.Transmission);
   const color        = translateColor(car.Color || car.Spec?.Color);
@@ -103,15 +121,25 @@ export default function CarDetail() {
   const seats        = car.Spec?.Seats || car.Seats;
   const vin          = car.Spec?.Vin || car.Vin || car.VinCode;
   const drive        = car.Spec?.Drive || car.Drive || car.DriveType;
+  const doors        = car.Spec?.Doors || car.Doors;
+  const bodyType     = car.Spec?.BodyType || car.BodyType;
+  const maxPower     = car.Spec?.MaxPower;
+  const maxTorque    = car.Spec?.MaxTorque;
+  const fuelEff      = car.Spec?.FuelEfficiency;
+  const weight       = car.Spec?.Weight;
+  const length       = car.Spec?.Length;
+  const width        = car.Spec?.Width;
 
-  const eurBase   = manwonToEur(car.Price);
-  const eurMain   = priceFor(car.Price);
-  const eurOther  = country === 'AL' ? pristinePrice(car.Price) : durresPrice(car.Price);
+  const eurBase  = manwonToEur(car.Price);
+  const eurMain  = priceFor(car.Price);
+  const eurOther = country === 'AL' ? pristinePrice(car.Price) : durresPrice(car.Price);
   const otherCity = country === 'AL' ? 'Prishtinë' : 'Durrës';
 
   const waMsg = encodeURIComponent(
     `Jam i interesuar për: ${manufacturer} ${model} ${badge} (${year}) — Encar ID: ${id}`
   );
+
+  const conditions = car.Condition || [];
 
   return (
     <div className="min-h-screen pb-24" style={{ background: 'var(--bg-page)' }}>
@@ -137,30 +165,47 @@ export default function CarDetail() {
       <div className="max-w-7xl mx-auto px-4 md:px-8 pt-6">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8">
 
-          {/* LEFT */}
+          {/* ── LEFT ── */}
           <div className="space-y-6">
+
+            {/* Gallery */}
             {photos.length > 0
               ? <ImageGallery photos={photos} alt={`${manufacturer} ${model}`} />
-              : <div className="rounded-2xl flex items-center justify-center h-64" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+              : <div className="rounded-2xl flex items-center justify-center h-64"
+                     style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
                   <span style={{ color: 'var(--text-3)' }}>Foto nuk disponohet</span>
                 </div>
             }
 
-            {/* Title */}
-            <div>
-              <p className="text-xs uppercase tracking-widest text-blue-500/70 font-semibold mb-1">{manufacturer}</p>
-              <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: 'var(--text-1)' }}>{model}</h1>
-              {subtitle && <p className="text-sm mt-1" style={{ color: 'var(--text-2)' }}>{subtitle}</p>}
+            {/* Title + status */}
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-widest text-blue-500/70 font-semibold mb-1">{manufacturer}</p>
+                <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: 'var(--text-1)' }}>{model}</h1>
+                {subtitle && <p className="text-sm mt-1" style={{ color: 'var(--text-2)' }}>{subtitle}</p>}
+              </div>
+              {conditions.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 justify-end">
+                  {conditions.map(c => (
+                    <span key={c} className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      {c === 'Inspection' ? '✓ Inspektuar' : c === 'Warranty' ? '✓ Garanci' : c === 'Record' ? '✓ Histori' : c}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Quick chips */}
             <div className="flex flex-wrap gap-2">
               {[
-                year && { icon: Calendar, label: year },
+                year && { icon: Calendar, label: regDate || year },
                 car.Mileage != null && { icon: Gauge, label: fmtKm(car.Mileage) },
                 fuel && { icon: Fuel, label: fuel },
                 trans && { icon: Settings, label: trans },
+                displacement && { icon: Zap, label: `${Number(displacement).toLocaleString('de-DE')} cc` },
+                drive && { icon: Wind, label: drive },
                 city && { icon: MapPin, label: city },
+                bodyType && { icon: Car, label: bodyType },
               ].filter(Boolean).map(({ icon: Icon, label }) => (
                 <span key={label} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm"
                   style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-2)' }}>
@@ -169,7 +214,34 @@ export default function CarDetail() {
               ))}
             </div>
 
-            {/* Specifications */}
+            {/* Inspection highlight */}
+            {inspect && (inspect.ownerCount != null || inspect.accidentCount != null) && (
+              <div className="flex flex-wrap gap-3">
+                {inspect.ownerCount != null && (
+                  <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm"
+                       style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
+                    <Users className="w-4 h-4" style={{ color: 'var(--text-3)' }} />
+                    <span style={{ color: 'var(--text-2)' }}>
+                      Pronarë: <strong style={{ color: 'var(--text-1)' }}>{inspect.ownerCount}</strong>
+                    </span>
+                  </div>
+                )}
+                {inspect.accidentCount != null && (
+                  <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm border font-medium ${
+                    inspect.accidentCount > 0
+                      ? 'bg-red-900/15 border-red-500/25 text-red-300'
+                      : 'bg-green-900/15 border-green-500/25 text-green-300'
+                  }`}>
+                    <AlertTriangle className="w-4 h-4" />
+                    {inspect.accidentCount > 0
+                      ? `${inspect.accidentCount} aksident i raportuar`
+                      : '✓ Asnjë aksident'}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Specifications ── */}
             <div className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
               <h2 className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: 'var(--text-3)' }}>
                 Specifikimet e Mjetit
@@ -177,20 +249,27 @@ export default function CarDetail() {
               <Row label="Marka"              value={manufacturer} />
               <Row label="Modeli"             value={model} />
               <Row label="Varianti"           value={subtitle || undefined} />
-              <Row label="Viti i Prodhimit"   value={year} />
+              <Row label="Viti Regjistrimit"  value={regDate || year} />
               <Row label="Kilometra"          value={car.Mileage != null ? fmtKm(car.Mileage) : undefined} />
               <Row label="Lloji Karburantit"  value={fuel} />
               <Row label="Transmisioni"       value={trans} />
-              <Row label="Drivetrain"         value={drive || undefined} />
-              <Row label="Motori (cc)"        value={displacement ? `${displacement} cc` : undefined} />
-              <Row label="Ngjyra"             value={color !== '—' ? color : undefined} />
+              <Row label="Drivetrain"         value={drive} />
+              <Row label="Motori (cc)"        value={displacement ? `${Number(displacement).toLocaleString('de-DE')} cc` : undefined} />
+              {maxPower  && <Row label="Fuqi Maksimale"  value={maxPower} />}
+              {maxTorque && <Row label="Tork Maksimal"   value={maxTorque} />}
+              {fuelEff   && <Row label="Konsumi (km/L)"  value={fuelEff} />}
+              <Row label="Tipi i Karrocerisë" value={bodyType} />
+              {doors     && <Row label="Numri Dyerve"    value={String(doors)} />}
               <Row label="Numri Ulëseve"      value={seats} />
+              <Row label="Ngjyra"             value={color !== '—' ? color : undefined} />
               <Row label="Lokacioni (KR)"     value={city} />
-              {vin && <Row label="Numri Shasisë" value={vin} mono />}
-              {id  && <Row label="ID Encar"      value={String(id)} mono />}
+              {weight    && <Row label="Pesha (kg)"      value={`${Number(weight).toLocaleString('de-DE')} kg`} />}
+              {length    && <Row label="Gjatësia (mm)"   value={`${Number(length).toLocaleString('de-DE')} mm`} />}
+              {vin       && <Row label="Numri Shasisë"   value={vin} mono />}
+              {id        && <Row label="ID Encar"        value={String(id)} mono highlight />}
             </div>
 
-            {/* Options */}
+            {/* ── Options ── */}
             {options.length > 0 && (
               <div className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
                 <h2 className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: 'var(--text-3)' }}>
@@ -210,7 +289,7 @@ export default function CarDetail() {
               </div>
             )}
 
-            {/* Inspection */}
+            {/* ── Inspection Report ── */}
             <div className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
               <h2 className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: 'var(--text-3)' }}>
                 Raporti i Inspektimit
@@ -222,30 +301,6 @@ export default function CarDetail() {
                 </div>
               ) : inspect ? (
                 <>
-                  {(inspect.ownerCount != null || inspect.accidentCount != null) && (
-                    <div className="flex flex-wrap gap-3 mb-5">
-                      {inspect.ownerCount != null && (
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
-                          <Users className="w-4 h-4" style={{ color: 'var(--text-3)' }} />
-                          <span style={{ color: 'var(--text-2)' }}>
-                            Pronarë: <strong style={{ color: 'var(--text-1)' }}>{inspect.ownerCount}</strong>
-                          </span>
-                        </div>
-                      )}
-                      {inspect.accidentCount != null && (
-                        <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm border ${
-                          inspect.accidentCount > 0
-                            ? 'bg-red-900/15 border-red-500/25 text-red-300'
-                            : 'bg-green-900/15 border-green-500/25 text-green-300'
-                        }`}>
-                          <AlertTriangle className="w-4 h-4" />
-                          {inspect.accidentCount > 0
-                            ? `${inspect.accidentCount} aksident i raportuar`
-                            : 'Asnjë aksident i raportuar'}
-                        </div>
-                      )}
-                    </div>
-                  )}
                   <AccidentDiagram damage={inspect.damage} />
                   <p className="mt-5 text-[11px] pt-4" style={{ color: 'var(--text-4)', borderTop: '1px solid var(--border-lo)' }}>
                     Ky inspektim është bërë nga pala koreane para se mjeti të dalë në shitje.
@@ -272,34 +327,27 @@ export default function CarDetail() {
             </div>
           </div>
 
-          {/* RIGHT — sticky price */}
+          {/* ── RIGHT — sticky price ── */}
           <div className="space-y-4">
             <div className="rounded-2xl p-6 lg:sticky lg:top-20" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+
               {/* Primary price */}
               <div className="pb-4" style={{ borderBottom: '1px solid var(--border-lo)' }}>
                 <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5 font-mono" style={{ color: 'var(--text-3)' }}>
                   Çmimi deri në {country === 'AL' ? 'Durrës' : 'Prishtinë'}
                 </p>
-                <p className="text-4xl font-extrabold tracking-tight" style={{ color: 'var(--text-1)' }}>
+                <p className="text-4xl font-extrabold tracking-tight font-mono" style={{ color: 'var(--text-1)' }}>
                   {eurBase > 0 ? fmtEur(eurMain) : '—'}
                 </p>
                 <p className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>Transport + doganë të përfshira</p>
               </div>
+
               {/* Secondary prices */}
               <div className="pt-4 space-y-2.5">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="flex items-center gap-1.5" style={{ color: 'var(--text-3)' }}>
-                    <MapPin className="w-3.5 h-3.5" />Çmimi bazë (Korea)
-                  </span>
-                  <span className="font-medium" style={{ color: 'var(--text-2)' }}>{eurBase > 0 ? fmtEur(eurBase) : '—'}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="flex items-center gap-1.5" style={{ color: 'var(--text-3)' }}>
-                    <MapPin className="w-3.5 h-3.5" />Deri në {otherCity}
-                  </span>
-                  <span className="font-semibold" style={{ color: 'var(--text-2)' }}>{eurBase > 0 ? fmtEur(eurOther) : '—'}</span>
-                </div>
+                <PriceLine label="Çmimi bazë (Korea)" value={eurBase > 0 ? fmtEur(eurBase) : '—'} />
+                <PriceLine label={`Deri në ${otherCity}`} value={eurBase > 0 ? fmtEur(eurOther) : '—'} />
               </div>
+
               <p className="text-[10px] mt-3" style={{ color: 'var(--text-4)' }}>
                 * Çmimi bazë + transport + doganë. Për çmim final me taksa importi kontaktoni.
               </p>
@@ -314,16 +362,17 @@ export default function CarDetail() {
                 </a>
                 <a href={`tel:${PHONE}`}
                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm transition-all btn-ghost">
-                  <Phone className="w-4 h-4" />Thirr Shitësin
+                  <Phone className="w-4 h-4" />{PHONE}
+                </a>
+                <a href={`mailto:${EMAIL}?subject=${encodeURIComponent(`Interesim: ${manufacturer} ${model} (${year}) #${id}`)}`}
+                   className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm transition-all btn-ghost">
+                  <Mail className="w-4 h-4" />{EMAIL}
                 </a>
               </div>
 
               {/* Trust badges */}
               <div className="mt-5 pt-4 space-y-2" style={{ borderTop: '1px solid var(--border-lo)' }}>
-                {[
-                  'Shërbim Inspektimi Profesional',
-                  'Transport i Siguruar Deri Te Ju',
-                ].map(t => (
+                {['Shërbim Inspektimi Profesional', 'Transport i Siguruar Deri Te Ju'].map(t => (
                   <div key={t} className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-3)' }}>
                     <ShieldCheck className="w-3.5 h-3.5 text-green-600" />{t}
                   </div>
@@ -341,24 +390,38 @@ export default function CarDetail() {
           </div>
         </div>
 
-        {/* Similar Cars */}
+        {/* ── Similar Cars ── */}
         {similar.length > 0 && (
-          <div className="mt-12">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold" style={{ color: 'var(--text-1)' }}>
-                Makina të ngjashme · <span className="text-blue-400">{tr(car.Manufacturer)}</span>
+          <div className="mt-16">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold" style={{ color: 'var(--text-1)' }}>
+                Makina të ngjashme ·{' '}
+                <span className="text-blue-400">{manufacturer}</span>
               </h2>
-              <Link to={`/?brand=${encodeURIComponent(tr(car.Manufacturer))}`}
-                    className="text-sm text-blue-500 hover:text-blue-400 font-medium">
+              <Link
+                to={`/?brand=${encodeURIComponent(manufacturer)}`}
+                className="text-sm text-blue-500 hover:text-blue-400 font-medium transition-colors"
+              >
                 Shiko të gjitha →
               </Link>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {similar.map(c => <CarCard key={c.Id} car={c} />)}
             </div>
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function PriceLine({ label, value }) {
+  return (
+    <div className="flex justify-between items-center text-sm">
+      <span className="flex items-center gap-1.5" style={{ color: 'var(--text-3)' }}>
+        <MapPin className="w-3.5 h-3.5" />{label}
+      </span>
+      <span className="font-medium font-mono" style={{ color: 'var(--text-2)' }}>{value}</span>
     </div>
   );
 }
