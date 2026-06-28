@@ -356,34 +356,47 @@ export default function CarDetail() {
                 </div>
               ) : inspect ? (
                 <>
-                  <AccidentDiagram damage={inspect.damage} />
+                  <AccidentDiagram damage={inspect.damage} dataAvailable={true} />
+
+                  {/* Inspection metadata */}
+                  {inspect.inspectionDate && (
+                    <p className="text-xs mt-3 mb-1" style={{ color: 'var(--text-4)' }}>
+                      Inspektimi u krye: <span className="font-mono font-semibold" style={{ color: 'var(--text-2)' }}>{inspect.inspectionDate}</span>
+                    </p>
+                  )}
 
                   {/* Repair History */}
-                  {inspect.repairHistory && inspect.repairHistory.length > 0 && (
-                    <div className="mt-6">
-                      <p className="text-[10px] uppercase tracking-widest font-mono font-semibold mb-3"
-                         style={{ color: 'var(--text-3)' }}>
-                        Historiku i Riparimeve · {inspect.repairHistory.length} regjistrim
-                      </p>
+                  <div className="mt-5">
+                    <p className="text-[10px] uppercase tracking-widest font-mono font-semibold mb-3"
+                       style={{ color: 'var(--text-3)' }}>
+                      Historiku i Riparimeve
+                      {inspect.repairHistory?.length > 0 && (
+                        <span className="ml-2 normal-case tracking-normal font-normal">
+                          · {inspect.repairHistory.length} regjistrim
+                        </span>
+                      )}
+                    </p>
+
+                    {inspect.repairHistory?.length > 0 ? (
                       <div className="space-y-3">
                         {inspect.repairHistory.map((h, i) => (
                           <div key={i} className="rounded-xl p-4"
                                style={{ background: 'var(--bg-card2)', border: '1px solid var(--border-lo)' }}>
                             <div className="flex items-start justify-between gap-3 flex-wrap">
-                              <div>
+                              <div className="flex flex-wrap items-center gap-1.5">
                                 {h.date && (
                                   <span className="text-xs font-mono font-bold" style={{ color: 'var(--text-1)' }}>
                                     {h.date}
                                   </span>
                                 )}
                                 {h.type && (
-                                  <span className="ml-2 text-xs px-2 py-0.5 rounded-full"
+                                  <span className="text-xs px-2 py-0.5 rounded-full"
                                         style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)' }}>
                                     {h.type}
                                   </span>
                                 )}
                                 {h.insurance && (
-                                  <span className="ml-1 text-xs px-2 py-0.5 rounded-full"
+                                  <span className="text-xs px-2 py-0.5 rounded-full"
                                         style={{ background: 'rgba(59,130,246,0.12)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.25)' }}>
                                     Sigurim
                                   </span>
@@ -401,9 +414,9 @@ export default function CarDetail() {
                               )}
                             </div>
                             {h.parts && h.parts.length > 0 && (
-                              <div className="mt-3 space-y-1">
+                              <div className="mt-3 space-y-0">
                                 {h.parts.map((p, j) => (
-                                  <div key={j} className="flex items-center justify-between text-xs py-1"
+                                  <div key={j} className="flex items-center justify-between text-xs py-1.5"
                                        style={{ borderTop: '1px solid var(--border-lo)', color: 'var(--text-3)' }}>
                                     <span>{p.part || '—'}{p.work ? ` · ${p.work}` : ''}</span>
                                     {p.cost != null && (
@@ -418,8 +431,29 @@ export default function CarDetail() {
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="flex items-start gap-3 p-4 rounded-xl"
+                           style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)' }}>
+                        <span className="text-green-500 flex-shrink-0 mt-0.5">✓</span>
+                        <div>
+                          <p className="text-sm font-semibold" style={{ color: '#10b981' }}>
+                            Asnjë riparim i regjistruar
+                          </p>
+                          <p className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>
+                            Bazuar në të dhënat e Encar — nuk ka regjistrime riparimesh apo aksidentesh për këtë mjet.
+                          </p>
+                          {id && (
+                            <a href={`https://www.encar.com/inspection/car/carConditionDetail.do?carid=${id}`}
+                               target="_blank" rel="noopener noreferrer"
+                               className="mt-2 inline-flex items-center gap-1 text-xs hover:underline"
+                               style={{ color: '#60a5fa' }}>
+                              <ExternalLink className="w-3 h-3" />Verifiko vetë në Encar
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   <p className="mt-5 text-[11px] pt-4" style={{ color: 'var(--text-4)', borderTop: '1px solid var(--border-lo)' }}>
                     Ky inspektim është bërë nga pala koreane para se mjeti të dalë në shitje.
@@ -427,7 +461,7 @@ export default function CarDetail() {
                 </>
               ) : (
                 <div className="space-y-3">
-                  <AccidentDiagram damage={null} />
+                  <AccidentDiagram damage={null} dataAvailable={false} />
                   <div className="flex items-start gap-3 mt-4 p-3 bg-blue-950/20 border border-blue-500/10 rounded-xl">
                     <Info className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
                     <div>

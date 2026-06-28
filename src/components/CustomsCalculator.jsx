@@ -47,7 +47,7 @@ export default function CustomsCalculator({ onClose }) {
         <div className="space-y-4">
           {/* Country */}
           <div>
-            <label className="block text-[10px] uppercase tracking-wider text-gray-600 font-mono font-semibold mb-1.5">
+            <label className="block text-[10px] uppercase tracking-wider text-gray-400 font-mono font-semibold mb-1.5">
               Shteti i Importit
             </label>
             <div className="relative">
@@ -65,7 +65,7 @@ export default function CustomsCalculator({ onClose }) {
 
           {/* Value input */}
           <div>
-            <label className="block text-[10px] uppercase tracking-wider text-gray-600 font-mono font-semibold mb-1.5">
+            <label className="block text-[10px] uppercase tracking-wider text-gray-400 font-mono font-semibold mb-1.5">
               Vlera e Mjetit (EUR)
             </label>
             <div className="relative">
@@ -79,13 +79,13 @@ export default function CustomsCalculator({ onClose }) {
                 className="input pl-8 font-mono"
               />
             </div>
-            <p className="text-[10px] text-gray-700 mt-1">Bazuar në çmimin e automjetit (CIF - Korea → port)</p>
+            <p className="text-[10px] text-gray-500 mt-1">Bazuar në çmimin e automjetit (CIF - Korea → port)</p>
           </div>
 
           {/* Results */}
           {result && (
             <div className="bg-[#080812] border border-white/5 rounded-xl p-4 space-y-2 mt-2">
-              <p className="text-[10px] uppercase tracking-widest text-gray-600 font-mono font-semibold mb-3">
+              <p className="text-[10px] uppercase tracking-widest text-gray-400 font-mono font-semibold mb-3">
                 Llogaritja
               </p>
 
@@ -116,7 +116,7 @@ export default function CustomsCalculator({ onClose }) {
             </div>
           )}
 
-          <p className="text-[10px] text-gray-700 text-center">
+          <p className="text-[10px] text-gray-500 text-center">
             * Llogaritje afërsisht. Tarifat zyrtare mund të ndryshojnë sipas vitit, kubaturës dhe gjendjes së mjetit.
           </p>
         </div>

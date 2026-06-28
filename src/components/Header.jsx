@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { X, Sun, Moon, Menu } from 'lucide-react';
+import { X, Sun, Moon } from 'lucide-react';
 import { useCountry } from '../contexts/CountryContext.jsx';
 import { useTheme } from '../contexts/ThemeContext.jsx';
 import CustomsCalculator from './CustomsCalculator.jsx';
@@ -118,10 +118,13 @@ export default function Header() {
             <button
               onClick={() => setMenu(true)}
               className="sm:hidden flex w-9 h-9 items-center justify-center rounded-xl btn-ghost"
-              style={{ color: 'var(--text-1)' }}
               aria-label="Menu"
             >
-              <Menu className="w-5 h-5" />
+              <div className="flex flex-col justify-center gap-[5px]">
+                <span style={{ display:'block', width:'20px', height:'2px', borderRadius:'2px', background:'var(--text-1)' }} />
+                <span style={{ display:'block', width:'20px', height:'2px', borderRadius:'2px', background:'var(--text-1)' }} />
+                <span style={{ display:'block', width:'20px', height:'2px', borderRadius:'2px', background:'var(--text-1)' }} />
+              </div>
             </button>
           </div>
         </div>

@@ -102,8 +102,15 @@ function translateWork(s) {
   return s;
 }
 
+function formatKoreanDate(raw) {
+  if (!raw) return null;
+  const s = String(raw).replace(/\D/g, '');
+  if (s.length === 8) return `${s.slice(6,8)}.${s.slice(4,6)}.${s.slice(0,4)}`;
+  if (s.length === 6) return `${s.slice(4,6)}.${s.slice(0,4)}`;
+  return raw;
+}
+
 function extractRepairHistory(raw) {
-  // Try all known field paths for accident/repair history in Encar API
   const candidates = [
     raw?.CarHistryList,
     raw?.CarHistoryList,
@@ -115,26 +122,28 @@ function extractRepairHistory(raw) {
     raw?.AccidentList,
   ].filter(a => Array.isArray(a) && a.length > 0);
 
-  if (!candidates.length) return [];
+  const historyAvailable = candidates.length > 0;
 
-  return candidates[0].map(h => {
-    const parts = Array.isArray(h.PerfParts || h.Parts || h.PartList)
-      ? (h.PerfParts || h.Parts || h.PartList).map(p => ({
-          part: translatePart(p.PartName || p.Name || p.Part || JSON.stringify(p)),
+  const list = historyAvailable ? candidates[0].map(h => {
+    const rawParts = h.PerfParts || h.Parts || h.PartList || [];
+    const parts = Array.isArray(rawParts)
+      ? rawParts.map(p => ({
+          part: translatePart(p.PartName || p.Name || p.Part || ''),
           work: translateWork(p.WorkType || p.Work || p.Type || ''),
           cost: p.WorkCost || p.Cost || p.Price || null,
         }))
       : [];
 
     return {
-      date: h.PerfDateTime || h.DateTime || h.InsuranceDate || h.Date || null,
+      date: formatKoreanDate(h.PerfDateTime || h.DateTime || h.InsuranceDate || h.Date),
       type: h.WorkType || h.AccidentType || h.Type || null,
       totalCost: h.WorkCost || h.TotalCost || h.RepairCost || h.Cost || null,
       insurance: h.InsuranceApplyYN === 'Y' || h.Insurance === 'Y',
       parts,
-      raw: h,
     };
-  });
+  }) : [];
+
+  return { list, historyAvailable };
 }
 
 export default async function handler(req, res) {
@@ -171,17 +180,24 @@ export default async function handler(req, res) {
 
     const conditionData = raw.Inspection || raw.CarCondition || raw.Condition || raw;
     const parsed = parseCarCondition(conditionData);
-    const repairHistory = extractRepairHistory(raw);
+    const { list: repairHistory, historyAvailable } = extractRepairHistory(raw);
 
     const ownerCount    = raw.OwnerCount    ?? raw.OwnerChanges ?? raw.OwnerHistory?.length ?? null;
     const accidentCount = raw.AccidentCount ?? raw.AccidentHistoryCount ?? null;
+    const inspectionDate = formatKoreanDate(
+      raw.InspectionDate || raw.PerfDate || raw.InspectDate || null
+    );
+    const rawKeys = Object.keys(raw);
 
     return res.status(200).json({
       raw,
       damage: parsed,
       repairHistory,
+      historyAvailable,
+      inspectionDate,
       ownerCount,
       accidentCount,
+      rawKeys,
     });
   } catch (err) {
     clearTimeout(timer);

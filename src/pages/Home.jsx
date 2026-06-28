@@ -247,6 +247,46 @@ export default function Home() {
             </p>
           )}
         </div>
+
+        {/* WHY US — appears inline when all cars are loaded */}
+        {done && cars.length > 0 && (
+          <div className="mt-10 pt-10" style={{ borderTop: '1px solid var(--border-lo)' }}>
+            <div className="text-center mb-8">
+              <p className="text-[11px] uppercase tracking-widest text-blue-500/70 font-semibold font-mono mb-2">
+                Avantazhi ynë
+              </p>
+              <h2 className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--text-1)' }}>
+                Pse të na zgjidhni ne?
+              </h2>
+              <p className="text-sm mt-2 max-w-lg mx-auto" style={{ color: 'var(--text-3)' }}>
+                Importojmë direkt nga Korea Jugore — pa ndërmjetës, pa surpriza. Transparencë totale.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {WHY_US.map(({ icon: Icon, title, desc }) => (
+                <div key={title}
+                  className="rounded-2xl p-5 transition-all group"
+                  style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(59,130,246,0.2)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; }}
+                >
+                  <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center mb-3 group-hover:bg-blue-500/15 transition-colors">
+                    <Icon className="w-4 h-4 text-blue-400" />
+                  </div>
+                  <h3 className="font-bold text-sm mb-1.5" style={{ color: 'var(--text-1)' }}>{title}</h3>
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--text-3)' }}>{desc}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-8 text-center">
+              <a href="https://wa.me/38349644168" target="_blank" rel="noopener noreferrer"
+                 className="btn-primary px-8 py-3 text-sm inline-flex items-center gap-2">
+                💬 Na Kontaktoni Tani
+              </a>
+              <p className="text-xs mt-2" style={{ color: 'var(--text-4)' }}>Pa asnjë angazhim · Konsultë falas</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Why Choose Us */}
@@ -281,7 +321,7 @@ export default function Home() {
             ))}
           </div>
           <div className="mt-12 text-center">
-            <a href="https://wa.me/355000000000" target="_blank" rel="noopener noreferrer" className="btn-primary px-8 py-3 text-sm">
+            <a href="https://wa.me/38349644168" target="_blank" rel="noopener noreferrer" className="btn-primary px-8 py-3 text-sm inline-flex items-center gap-2">
               Na Kontaktoni Tani
             </a>
             <p className="text-xs mt-3" style={{ color: 'var(--text-4)' }}>Pa asnjë angazhim · Konsultë falas</p>
