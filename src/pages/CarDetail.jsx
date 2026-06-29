@@ -471,6 +471,42 @@ export default function CarDetail() {
                     )}
                   </div>
 
+                  {/* Internal Inspection */}
+                  {inspect.internalInspection?.length > 0 && (
+                    <div className="mt-6 space-y-5">
+                      <p className="text-[10px] uppercase tracking-widest font-mono font-semibold"
+                         style={{ color: 'var(--text-3)' }}>
+                        Inspektimi i Brendshëm
+                      </p>
+                      {inspect.internalInspection.map(group => (
+                        <div key={group.group}>
+                          <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-2)' }}>
+                            {group.group}
+                          </p>
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr>
+                                <th className="text-left pb-1 font-normal" style={{ color: 'var(--text-4)' }}>Pjesa</th>
+                                <th className="text-right pb-1 font-normal" style={{ color: 'var(--text-4)' }}>Gjendja</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {group.items.map((item, i) => (
+                                <tr key={i} style={{ borderTop: '1px solid var(--border-lo)' }}>
+                                  <td className="py-1.5 pr-3" style={{ color: 'var(--text-3)' }}>{item.name}</td>
+                                  <td className="py-1.5 text-right font-medium whitespace-nowrap"
+                                      style={{ color: item.ok ? '#10b981' : '#ef4444' }}>
+                                    {item.status}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <p className="mt-5 text-[11px] pt-4" style={{ color: 'var(--text-4)', borderTop: '1px solid var(--border-lo)' }}>
                     Ky inspektim është bërë nga pala koreane para se mjeti të dalë në shitje.
                   </p>
