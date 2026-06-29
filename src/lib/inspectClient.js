@@ -120,6 +120,7 @@ function extractRepairHistory(raw) {
       type: trMap(h.WorkType || h.AccidentType || h.Type, WORK_MAP) || null,
       totalCost: h.WorkCost || h.TotalCost || h.RepairCost || h.Cost || null,
       insurance: h.InsuranceApplyYN === 'Y' || h.Insurance === 'Y',
+      unconfirmed: h.ConfirmedYN === 'N' || h.Confirmed === false || h.ConfirmStatus === '미확인',
       parts: rawParts.map(p => ({
         part: trMap(p.PartName || p.Name || p.Part || '', PART_MAP) || '—',
         work: trMap(p.WorkType || p.Work || p.Type || '', WORK_MAP) || '',
@@ -128,6 +129,35 @@ function extractRepairHistory(raw) {
     };
   });
   return { list, historyAvailable };
+}
+
+function extractUsageHistory(raw) {
+  const src = raw?.CarUsageHistory || raw?.UsageHistory || raw?.CarCondition?.Usage || {};
+  const isRental =
+    src.TaxiUsedYn === 'Y' || src.RentalUsedYn === 'Y' || src.IsRental === true ||
+    raw?.IsRentalCar === true || raw?.RentalCar === 'Y' || raw?.TaxiCar === 'Y' ||
+    raw?.CarCondition?.TaxiUsedYn === 'Y' || raw?.CarCondition?.RentalUsedYn === 'Y';
+  const isCommercial =
+    src.CommercialUsedYn === 'Y' || src.IsCommercial === true ||
+    raw?.IsCommercialCar === true || raw?.CommercialCar === 'Y' ||
+    raw?.CarCondition?.CommercialUsedYn === 'Y';
+  return { isRental, isCommercial };
+}
+
+function extractOwnerHistory(raw) {
+  const candidates = [
+    raw?.OwnerHistory,
+    raw?.CarHistory?.OwnerHistory,
+    raw?.CarCondition?.OwnerHistory,
+    raw?.OwnerChanges,
+    raw?.OwnerChangeHistory,
+    raw?.CarCondition?.OwnerChanges,
+  ].filter(a => Array.isArray(a) && a.length > 0);
+  if (!candidates.length) return [];
+  return candidates[0].map(o => ({
+    date: fmtDate(o.Date || o.ChangeDate || o.TransferDate || o.OwnerChangeDate || ''),
+    event: 'Nderrim pronari',
+  })).filter(o => o.date);
 }
 
 const INSPECT_LABELS = {
@@ -356,5 +386,8 @@ export async function fetchInspect(id) {
   const accidentCount = raw.AccidentCount ?? raw.AccidentHistoryCount ?? null;
   const inspectionDate = fmtDate(raw.InspectionDate || raw.PerfDate || raw.InspectDate || null);
 
-  return { damage: parsed, repairHistory, historyAvailable, inspectionDate, ownerCount, accidentCount, internalInspection, apiError: false };
+  const usageHistory   = extractUsageHistory(raw);
+  const ownerHistory   = extractOwnerHistory(raw);
+
+  return { damage: parsed, repairHistory, historyAvailable, inspectionDate, ownerCount, accidentCount, internalInspection, usageHistory, ownerHistory, apiError: false };
 }

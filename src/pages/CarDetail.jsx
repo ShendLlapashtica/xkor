@@ -59,6 +59,7 @@ export default function CarDetail() {
   const [error, setError]       = useState(null);
   const inspectRef      = useRef(null);
   const inspectStarted  = useRef(false);
+  const [openGroups, setOpenGroups] = useState({});
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, []);
 
@@ -386,89 +387,175 @@ export default function CarDetail() {
                 <>
                   <AccidentDiagram damage={inspect.damage} dataAvailable={!inspect.apiError} />
 
-                  {/* Inspection metadata */}
                   {inspect.inspectionDate && (
-                    <p className="text-xs mt-3 mb-1" style={{ color: 'var(--text-4)' }}>
+                    <p className="text-xs mt-3" style={{ color: 'var(--text-4)' }}>
                       Inspektimi u krye: <span className="font-mono font-semibold" style={{ color: 'var(--text-2)' }}>{inspect.inspectionDate}</span>
                     </p>
                   )}
 
-                  {/* Repair History */}
-                  <div className="mt-5">
+                  {/* Inspektimi i Brendshëm — accordion */}
+                  {inspect.internalInspection?.length > 0 && (
+                    <div className="mt-6">
+                      <p className="text-[10px] uppercase tracking-widest font-mono font-semibold mb-3"
+                         style={{ color: 'var(--text-3)' }}>
+                        Inspektimi i Brendshëm
+                      </p>
+                      <div className="space-y-2">
+                        {inspect.internalInspection.map(group => (
+                          <div key={group.group} className="rounded-xl overflow-hidden"
+                               style={{ border: '1px solid var(--border-lo)' }}>
+                            <button
+                              onClick={() => setOpenGroups(prev => ({ ...prev, [group.group]: !prev[group.group] }))}
+                              className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold transition-colors"
+                              style={{ background: 'var(--bg-card2)', color: 'var(--text-1)' }}
+                            >
+                              {group.group}
+                              <ChevronDown
+                                className={`w-4 h-4 transition-transform ${openGroups[group.group] ? 'rotate-180' : ''}`}
+                                style={{ color: 'var(--text-3)' }} />
+                            </button>
+                            {openGroups[group.group] && (
+                              <table className="w-full text-xs" style={{ background: 'var(--bg-card)' }}>
+                                <thead>
+                                  <tr style={{ borderTop: '1px solid var(--border-lo)' }}>
+                                    <th className="text-left px-4 py-2 font-mono font-semibold text-[10px] uppercase tracking-wider"
+                                        style={{ color: 'var(--text-4)' }}>Pjesa</th>
+                                    <th className="text-right px-4 py-2 font-mono font-semibold text-[10px] uppercase tracking-wider"
+                                        style={{ color: 'var(--text-4)' }}>Gjendja</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {group.items.map((item, i) => (
+                                    <tr key={i} style={{ borderTop: '1px solid var(--border-lo)' }}>
+                                      <td className="px-4 py-2.5" style={{ color: 'var(--text-3)' }}>{item.name}</td>
+                                      <td className="px-4 py-2.5 text-right font-semibold whitespace-nowrap"
+                                          style={{ color: item.ok ? '#10b981' : '#ef4444' }}>{item.status}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Historia e Përdorimit të Veturës */}
+                  {inspect.usageHistory && (
+                    <div className="mt-6">
+                      <p className="text-[10px] uppercase tracking-widest font-mono font-semibold mb-3"
+                         style={{ color: 'var(--text-3)' }}>
+                        Historia e Përdorimit të Veturës
+                      </p>
+                      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-lo)' }}>
+                        {[
+                          { label: 'Përdorur si veturë me qera', value: inspect.usageHistory.isRental },
+                          { label: 'Përdorur për qëllime komerciale', value: inspect.usageHistory.isCommercial },
+                        ].map(({ label, value }, i) => (
+                          <div key={i} className="flex items-center justify-between px-4 py-3 text-sm"
+                               style={{ borderTop: i > 0 ? '1px solid var(--border-lo)' : 'none', background: 'var(--bg-card2)' }}>
+                            <span style={{ color: 'var(--text-3)' }}>{label}</span>
+                            <span className="font-semibold" style={{ color: value ? '#ef4444' : '#10b981' }}>
+                              {value ? 'Po' : 'Jo'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Historia e Ndërrimit të Pronareve */}
+                  {inspect.ownerHistory?.length > 0 && (
+                    <div className="mt-6">
+                      <p className="text-[10px] uppercase tracking-widest font-mono font-semibold mb-3"
+                         style={{ color: 'var(--text-3)' }}>
+                        Historia e Ndërrimit të Pronareve
+                      </p>
+                      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-lo)' }}>
+                        {inspect.ownerHistory.map((o, i) => (
+                          <div key={i} className="flex items-center justify-between px-4 py-3 text-sm"
+                               style={{ borderTop: i > 0 ? '1px solid var(--border-lo)' : 'none', background: 'var(--bg-card2)' }}>
+                            <span className="font-mono" style={{ color: 'var(--text-2)' }}>{o.date}</span>
+                            <span style={{ color: 'var(--text-3)' }}>{o.event}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Historia e Serviseve */}
+                  <div className="mt-6">
                     <p className="text-[10px] uppercase tracking-widest font-mono font-semibold mb-3"
                        style={{ color: 'var(--text-3)' }}>
-                      Historiku i Riparimeve
+                      Historia e Serviseve
                       {inspect.repairHistory?.length > 0 && (
                         <span className="ml-2 normal-case tracking-normal font-normal">
                           · {inspect.repairHistory.length} regjistrim
                         </span>
                       )}
                     </p>
-
                     {inspect.repairHistory?.length > 0 ? (
-                      <div className="space-y-3">
-                        {inspect.repairHistory.map((h, i) => (
-                          <div key={i} className="rounded-xl p-4"
-                               style={{ background: 'var(--bg-card2)', border: '1px solid var(--border-lo)' }}>
-                            <div className="flex items-start justify-between gap-3 flex-wrap">
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                {h.date && (
-                                  <span className="text-xs font-mono font-bold" style={{ color: 'var(--text-1)' }}>
-                                    {h.date}
-                                  </span>
-                                )}
-                                {h.type && (
-                                  <span className="text-xs px-2 py-0.5 rounded-full"
-                                        style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)' }}>
-                                    {h.type}
-                                  </span>
-                                )}
-                                {h.insurance && (
-                                  <span className="text-xs px-2 py-0.5 rounded-full"
-                                        style={{ background: 'rgba(59,130,246,0.12)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.25)' }}>
-                                    Sigurim
-                                  </span>
-                                )}
-                              </div>
-                              {h.totalCost != null && (
-                                <div className="text-right flex-shrink-0">
-                                  <p className="text-xs font-mono font-bold" style={{ color: 'var(--text-1)' }}>
-                                    {Number(h.totalCost).toLocaleString('ko-KR')} ₩
-                                  </p>
-                                  <p className="text-[10px]" style={{ color: 'var(--text-4)' }}>
-                                    ≈ €{Math.round(Number(h.totalCost) / 1450).toLocaleString()}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                            {h.parts && h.parts.length > 0 && (
-                              <div className="mt-3 space-y-0">
-                                {h.parts.map((p, j) => (
-                                  <div key={j} className="flex items-center justify-between text-xs py-1.5"
-                                       style={{ borderTop: '1px solid var(--border-lo)', color: 'var(--text-3)' }}>
-                                    <span>{p.part || '—'}{p.work ? ` · ${p.work}` : ''}</span>
-                                    {p.cost != null && (
-                                      <span className="font-mono" style={{ color: 'var(--text-2)' }}>
-                                        {Number(p.cost).toLocaleString('ko-KR')} ₩
-                                      </span>
+                      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-lo)' }}>
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr style={{ background: 'var(--bg-card2)', borderBottom: '1px solid var(--border-lo)' }}>
+                              <th className="text-left px-4 py-2.5 font-mono font-semibold text-[10px] uppercase tracking-wider"
+                                  style={{ color: 'var(--text-4)' }}>Data</th>
+                              <th className="text-left px-4 py-2.5 font-mono font-semibold text-[10px] uppercase tracking-wider"
+                                  style={{ color: 'var(--text-4)' }}>Detaje</th>
+                              <th className="text-right px-4 py-2.5 font-mono font-semibold text-[10px] uppercase tracking-wider"
+                                  style={{ color: 'var(--text-4)' }}>Totali</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {inspect.repairHistory.map((h, i) => (
+                              <tr key={i} style={{ borderTop: i > 0 ? '1px solid var(--border-lo)' : 'none' }}>
+                                <td className="px-4 py-3 font-mono whitespace-nowrap" style={{ color: 'var(--text-2)' }}>
+                                  {h.date || '—'}
+                                </td>
+                                <td className="px-4 py-3" style={{ color: 'var(--text-3)' }}>
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    {h.type && <span>{h.type}</span>}
+                                    {h.insurance && (
+                                      <span className="text-[10px] px-1.5 py-0.5 rounded-full"
+                                            style={{ background: 'rgba(59,130,246,0.12)', color: '#60a5fa' }}>Sigurim</span>
                                     )}
                                   </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                                  {h.parts?.length > 0 && (
+                                    <div className="mt-1 space-y-0.5">
+                                      {h.parts.map((p, j) => (
+                                        <div key={j} className="text-[10px]" style={{ color: 'var(--text-4)' }}>
+                                          {p.part}{p.work ? ` · ${p.work}` : ''}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-right font-semibold whitespace-nowrap">
+                                  {h.unconfirmed ? (
+                                    <span style={{ color: 'var(--text-4)' }}>Pakonfirmuar</span>
+                                  ) : h.totalCost != null ? (
+                                    <span style={{ color: 'var(--text-1)' }}>
+                                      {Math.round(Number(h.totalCost) / 1450).toLocaleString('de-DE')} €
+                                    </span>
+                                  ) : (
+                                    <span style={{ color: 'var(--text-4)' }}>—</span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     ) : inspect.apiError ? (
                       <div className="flex items-start gap-3 p-4 rounded-xl"
                            style={{ background: 'rgba(100,116,139,0.06)', border: '1px solid rgba(100,116,139,0.2)' }}>
                         <span style={{ color: 'var(--text-3)' }} className="flex-shrink-0 mt-0.5">⚠</span>
                         <div>
-                          <p className="text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
-                            Encar nuk ka kthyer raport automatik
-                          </p>
+                          <p className="text-sm font-semibold" style={{ color: 'var(--text-2)' }}>Encar nuk ka kthyer raport automatik</p>
                           <p className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>
-                            Shiko vetë direkt në Encar për raportin e plotë të aksidenteve dhe riparimeve.
+                            Shiko vetë direkt në Encar për raportin e plotë.
                           </p>
                         </div>
                       </div>
@@ -477,54 +564,16 @@ export default function CarDetail() {
                            style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)' }}>
                         <span className="text-green-500 flex-shrink-0 mt-0.5">✓</span>
                         <div>
-                          <p className="text-sm font-semibold" style={{ color: '#10b981' }}>
-                            Asnjë riparim i regjistruar
-                          </p>
+                          <p className="text-sm font-semibold" style={{ color: '#10b981' }}>Asnjë riparim i regjistruar</p>
                           <p className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>
-                            Bazuar në të dhënat e Encar — nuk ka regjistrime riparimesh apo aksidentesh për këtë mjet.
+                            Bazuar në të dhënat e Encar — nuk ka regjistrime riparimesh apo aksidentesh.
                           </p>
                         </div>
                       </div>
                     )}
                   </div>
 
-                  {/* Internal Inspection */}
-                  {inspect.internalInspection?.length > 0 && (
-                    <div className="mt-6 space-y-5">
-                      <p className="text-[10px] uppercase tracking-widest font-mono font-semibold"
-                         style={{ color: 'var(--text-3)' }}>
-                        Inspektimi i Brendshëm
-                      </p>
-                      {inspect.internalInspection.map(group => (
-                        <div key={group.group}>
-                          <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-2)' }}>
-                            {group.group}
-                          </p>
-                          <table className="w-full text-xs">
-                            <thead>
-                              <tr>
-                                <th className="text-left pb-1 font-normal" style={{ color: 'var(--text-4)' }}>Pjesa</th>
-                                <th className="text-right pb-1 font-normal" style={{ color: 'var(--text-4)' }}>Gjendja</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {group.items.map((item, i) => (
-                                <tr key={i} style={{ borderTop: '1px solid var(--border-lo)' }}>
-                                  <td className="py-1.5 pr-3" style={{ color: 'var(--text-3)' }}>{item.name}</td>
-                                  <td className="py-1.5 text-right font-medium whitespace-nowrap"
-                                      style={{ color: item.ok ? '#10b981' : '#ef4444' }}>
-                                    {item.status}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <p className="mt-5 text-[11px] pt-4" style={{ color: 'var(--text-4)', borderTop: '1px solid var(--border-lo)' }}>
+                  <p className="mt-6 text-[11px] pt-4" style={{ color: 'var(--text-4)', borderTop: '1px solid var(--border-lo)' }}>
                     Ky inspektim është bërë nga pala koreane para se mjeti të dalë në shitje.
                   </p>
                 </>
