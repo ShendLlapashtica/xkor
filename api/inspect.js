@@ -1,29 +1,31 @@
 // Encar inspection / accident report
 const BROWSER_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-  'Accept': 'application/json, text/plain, */*',
+  'Accept': 'application/json, text/javascript, */*; q=0.01',
   'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8',
   'Referer': 'https://www.encar.com/',
   'Origin': 'https://www.encar.com',
-  'Cache-Control': 'no-cache',
 };
 
-async function safeFetch(url, signal, headers = BROWSER_HEADERS) {
-  try {
-    const r = await fetch(url, { signal, headers });
-    if (!r.ok) return null;
-    const text = await r.text();
-    if (!text || text.trim()[0] !== '{') return null;
-    return JSON.parse(text);
-  } catch { return null; }
+// Same pattern as api/car.js — the only proven-working fetch strategy
+async function tryFetch(url, signal, isWrapped = false) {
+  const r = await fetch(url, { signal, headers: isWrapped ? {} : BROWSER_HEADERS });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const text = await r.text();
+  if (isWrapped) {
+    const outer = JSON.parse(text);
+    if (!outer.contents) throw new Error('no contents');
+    return JSON.parse(outer.contents);
+  }
+  return JSON.parse(text);
 }
 
-// Wraps a promise to reject if it resolves to null/undefined
-function nonNull(p) {
-  return Promise.resolve(p).then(v => {
-    if (!v || typeof v !== 'object') throw new Error('null');
-    return v;
-  });
+// Unwrap search/car/view/general (may return {SearchResults:[car]} or car directly)
+function unwrapCar(d) {
+  if (!d) throw new Error('null');
+  const car = Array.isArray(d.SearchResults) && d.SearchResults.length > 0 ? d.SearchResults[0] : d;
+  if (!car || typeof car !== 'object') throw new Error('no car');
+  return car;
 }
 
 function normalizeCode(raw) {
@@ -365,44 +367,29 @@ export default async function handler(req, res) {
   if (!id) return res.status(400).json({ error: 'missing id' });
 
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 13000);
+  const timer = setTimeout(() => ctrl.abort(), 9000);
 
-  // Highest-priority first: search/car/view/general is proven to work (same as api/car.js).
-  // Then fall back to inspection-specific endpoints.
-  const urls = [
-    `https://api.encar.com/search/car/view/general?carid=${id}`,
-    `https://api.encar.com/inspection/view/general?carid=${id}`,
-    `https://api.encar.com/inspection/car/perform/${id}`,
-    `https://api.encar.com/inspection/car/${id}`,
-  ];
-
-  const attempts = [];
-  for (const url of urls) {
-    const enc = encodeURIComponent(url);
-    // Direct with browser headers
-    attempts.push(safeFetch(url, ctrl.signal));
-    // allorigins proxy (wrapped)
-    attempts.push(
-      fetch(`https://api.allorigins.win/get?url=${enc}`, { signal: ctrl.signal })
-        .then(r => r.ok ? r.text() : null)
-        .then(t => {
-          if (!t) return null;
-          const o = JSON.parse(t);
-          return o.contents ? JSON.parse(o.contents) : null;
-        })
-        .catch(() => null)
-    );
-    // corsproxy direct
-    attempts.push(
-      fetch(`https://corsproxy.io/?url=${enc}`, { signal: ctrl.signal })
-        .then(r => r.ok ? r.json() : null)
-        .catch(() => null)
-    );
-  }
+  // Mirror api/car.js: view endpoint first, list-by-ID as guaranteed fallback
+  const viewUrl = `https://api.encar.com/search/car/view/general?carid=${id}`;
+  const listUrl = `https://api.encar.com/search/car/list/general?${new URLSearchParams({
+    count: 'true',
+    q:     `(And.Hidden.N._.Carid.${id}.)`,
+    sr:    `|ModifiedDate|0|1`,
+    inav:  '|Metadata|Sort',
+  })}`;
+  const ev = encodeURIComponent(viewUrl);
+  const el = encodeURIComponent(listUrl);
 
   let raw = null;
   try {
-    raw = await Promise.any(attempts.map(nonNull));
+    raw = await Promise.any([
+      tryFetch(viewUrl,                                         ctrl.signal        ).then(unwrapCar),
+      tryFetch(`https://api.allorigins.win/get?url=${ev}`,     ctrl.signal, true  ).then(unwrapCar),
+      tryFetch(`https://corsproxy.io/?${ev}`,                  ctrl.signal        ).then(unwrapCar),
+      tryFetch(listUrl,                                         ctrl.signal        ).then(d => { const c = d?.SearchResults?.[0]; if (!c) throw new Error('not found'); return c; }),
+      tryFetch(`https://api.allorigins.win/get?url=${el}`,     ctrl.signal, true  ).then(d => { const c = d?.SearchResults?.[0]; if (!c) throw new Error('not found'); return c; }),
+      tryFetch(`https://corsproxy.io/?${el}`,                  ctrl.signal        ).then(d => { const c = d?.SearchResults?.[0]; if (!c) throw new Error('not found'); return c; }),
+    ]);
   } catch { raw = null; }
 
   clearTimeout(timer);
@@ -414,12 +401,6 @@ export default async function handler(req, res) {
       internalInspection: [], usageHistory: null, ownerHistory: [],
       apiError: true,
     });
-  }
-
-  // search/car/view/general returns { SearchResults: [carData], Count: N }
-  // Unwrap to get the actual car object with CarCondition, InspectCondition, etc.
-  if (Array.isArray(raw.SearchResults) && raw.SearchResults.length > 0) {
-    raw = raw.SearchResults[0];
   }
 
   const conditionData = raw.Inspection || raw.CarCondition || raw.Condition || raw;
