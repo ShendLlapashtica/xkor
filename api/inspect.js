@@ -409,15 +409,17 @@ export default async function handler(req, res) {
 
   if (!raw) {
     return res.status(200).json({
-      damage: null,
-      repairHistory: [],
-      historyAvailable: false,
-      inspectionDate: null,
-      ownerCount: null,
-      accidentCount: null,
-      internalInspection: [],
+      damage: null, repairHistory: [], historyAvailable: false,
+      inspectionDate: null, ownerCount: null, accidentCount: null,
+      internalInspection: [], usageHistory: null, ownerHistory: [],
       apiError: true,
     });
+  }
+
+  // search/car/view/general returns { SearchResults: [carData], Count: N }
+  // Unwrap to get the actual car object with CarCondition, InspectCondition, etc.
+  if (Array.isArray(raw.SearchResults) && raw.SearchResults.length > 0) {
+    raw = raw.SearchResults[0];
   }
 
   const conditionData = raw.Inspection || raw.CarCondition || raw.Condition || raw;
@@ -429,14 +431,29 @@ export default async function handler(req, res) {
   const accidentCount = raw.AccidentCount ?? raw.AccidentHistoryCount ?? null;
   const inspectionDate = fmtDate(raw.InspectionDate || raw.PerfDate || raw.InspectDate || null);
 
+  const src = raw?.CarUsageHistory || raw?.UsageHistory || raw?.CarCondition?.Usage || {};
+  const usageHistory = {
+    isRental:     src.TaxiUsedYn === 'Y' || src.RentalUsedYn === 'Y' ||
+                  raw?.IsRentalCar === true || raw?.RentalCar === 'Y' ||
+                  raw?.CarCondition?.TaxiUsedYn === 'Y' || raw?.CarCondition?.RentalUsedYn === 'Y',
+    isCommercial: src.CommercialUsedYn === 'Y' ||
+                  raw?.IsCommercialCar === true || raw?.CommercialCar === 'Y' ||
+                  raw?.CarCondition?.CommercialUsedYn === 'Y',
+  };
+
+  const ownerHistoryCandidates = [
+    raw?.OwnerHistory, raw?.CarHistory?.OwnerHistory,
+    raw?.CarCondition?.OwnerHistory, raw?.OwnerChanges, raw?.OwnerChangeHistory,
+  ].filter(a => Array.isArray(a) && a.length > 0);
+  const ownerHistory = ownerHistoryCandidates.length === 0 ? [] :
+    ownerHistoryCandidates[0].map(o => ({
+      date: fmtDate(o.Date || o.ChangeDate || o.TransferDate || o.OwnerChangeDate || ''),
+      event: 'Nderrim pronari',
+    })).filter(o => o.date);
+
   return res.status(200).json({
-    damage: parsed,
-    repairHistory,
-    historyAvailable,
-    inspectionDate,
-    ownerCount,
-    accidentCount,
-    internalInspection,
+    damage: parsed, repairHistory, historyAvailable, inspectionDate,
+    ownerCount, accidentCount, internalInspection, usageHistory, ownerHistory,
     apiError: false,
   });
 }

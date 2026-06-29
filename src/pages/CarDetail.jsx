@@ -14,7 +14,6 @@ import {
 } from '../lib/utils.js';
 import { translateFuel, translateTrans, translateOption, translateColor } from '../lib/translations.js';
 import { useCountry } from '../contexts/CountryContext.jsx';
-import { fetchInspect } from '../lib/inspectClient.js';
 
 const WHATSAPP    = '38349644168';
 const PHONE       = '+383 49 644 168';
@@ -85,7 +84,8 @@ export default function CarDetail() {
           inspectStarted.current = true;
           obs.disconnect();
           setLoadingInspect(true);
-          fetchInspect(id)
+          fetch(`/api/inspect?id=${id}`)
+            .then(r => r.json())
             .then(data => setInspect(data))
             .catch(() => setInspect({ apiError: true, damage: null, repairHistory: [], historyAvailable: false }))
             .finally(() => setLoadingInspect(false));

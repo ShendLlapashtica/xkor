@@ -374,6 +374,11 @@ export async function fetchInspect(id) {
   clearTimeout(timer);
   try { ctrl.abort(); } catch {}
 
+  // Unwrap search/car/view/general format: { SearchResults: [carData], Count: N }
+  if (Array.isArray(raw?.SearchResults) && raw.SearchResults.length > 0) {
+    raw = raw.SearchResults[0];
+  }
+
   if (!raw) {
     return { damage: null, repairHistory: [], historyAvailable: false, inspectionDate: null, ownerCount: null, accidentCount: null, internalInspection: [], apiError: true };
   }
