@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import {
   ArrowLeft, Phone, MessageCircle, Gauge, Calendar, Fuel,
@@ -14,6 +14,7 @@ import {
 } from '../lib/utils.js';
 import { translateFuel, translateTrans, translateOption, translateColor } from '../lib/translations.js';
 import { useCountry } from '../contexts/CountryContext.jsx';
+import { fetchInspect } from '../lib/inspectClient.js';
 
 const WHATSAPP    = '38349644168';
 const PHONE       = '+383 49 644 168';
@@ -54,8 +55,10 @@ export default function CarDetail() {
   const [inspect, setInspect]   = useState(null);
   const [similar, setSimilar]   = useState([]);
   const [loadingCar, setLoadingCar]         = useState(!state?.car);
-  const [loadingInspect, setLoadingInspect] = useState(true);
+  const [loadingInspect, setLoadingInspect] = useState(false);
   const [error, setError]       = useState(null);
+  const inspectRef      = useRef(null);
+  const inspectStarted  = useRef(false);
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, []);
 
@@ -72,11 +75,25 @@ export default function CarDetail() {
   }, [id, car]);
 
   useEffect(() => {
-    fetch(`/api/inspect?id=${id}`)
-      .then(r => r.json())
-      .then(data => { setInspect(data); })
-      .catch(() => { setInspect({ apiError: true, damage: null, repairHistory: [], historyAvailable: false }); })
-      .finally(() => setLoadingInspect(false));
+    inspectStarted.current = false;
+    const el = inspectRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !inspectStarted.current) {
+          inspectStarted.current = true;
+          obs.disconnect();
+          setLoadingInspect(true);
+          fetchInspect(id)
+            .then(data => setInspect(data))
+            .catch(() => setInspect({ apiError: true, damage: null, repairHistory: [], historyAvailable: false }))
+            .finally(() => setLoadingInspect(false));
+        }
+      },
+      { rootMargin: '400px' }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
   }, [id]);
 
   useEffect(() => {
@@ -335,7 +352,7 @@ export default function CarDetail() {
             )}
 
             {/* ── Inspection Report ── */}
-            <div className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+            <div ref={inspectRef} className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-3)' }}>
                   Raporti i Inspektimit

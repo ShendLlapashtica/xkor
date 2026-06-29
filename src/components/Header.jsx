@@ -48,7 +48,13 @@ function parseSearchQuery(q) {
       break;
     }
   }
-  if (matched) params.brand = matched;
+  if (matched) {
+    params.brand = matched;
+    const brandWordCount = matched.split(/\s+/).length;
+    const afterBrand = nonYear.slice(brandWordCount);
+    const modelWords = afterBrand.filter(w => !FUEL_KEYWORDS[w.toLowerCase()]);
+    if (modelWords.length > 0) params.model = modelWords.join(' ');
+  }
 
   return params;
 }

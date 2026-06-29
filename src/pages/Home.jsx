@@ -5,7 +5,7 @@ import CarCard from '../components/CarCard.jsx';
 import Filters from '../components/Filters.jsx';
 
 const PAGE_SIZE = 24;
-const EMPTY_FILTERS = { manufacturer: '', fuel: '', yearFrom: '', yearTo: '', mileageTo: '' };
+const EMPTY_FILTERS = { manufacturer: '', model: '', fuel: '', yearFrom: '', yearTo: '', mileageTo: '' };
 
 const WHY_US = [
   { icon: BadgeCheck,     title: 'Vetëm Makina të Verifikuara', desc: 'Çdo makinë ka raport inspektimi nga Encar — histori dëmtimesh, numër pronarësh dhe aksidente.' },
@@ -19,6 +19,7 @@ const WHY_US = [
 function filtersFromParams(params) {
   return {
     manufacturer: params.get('brand')    || '',
+    model:        params.get('model')    || '',
     fuel:         params.get('fuel')     || '',
     yearFrom:     params.get('yearFrom') || '',
     yearTo:       params.get('yearTo')   || '',
@@ -30,6 +31,7 @@ function paramsFromFilters(f, keyword) {
   const p = {};
   if (keyword)      p.q       = keyword;
   if (f.manufacturer) p.brand   = f.manufacturer;
+  if (f.model)        p.model   = f.model;
   if (f.fuel)         p.fuel    = f.fuel;
   if (f.yearFrom)     p.yearFrom = f.yearFrom;
   if (f.yearTo)       p.yearTo   = f.yearTo;
