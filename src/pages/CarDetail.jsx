@@ -3,7 +3,7 @@ import { useParams, useLocation, Link } from 'react-router-dom';
 import {
   ArrowLeft, Phone, MessageCircle, Gauge, Calendar, Fuel,
   Settings, Users, ShieldCheck, AlertTriangle, Info, MapPin,
-  ExternalLink, Mail, Zap, Wind, Car,
+  ExternalLink, Mail, Zap, Wind, Car, ChevronDown,
 } from 'lucide-react';
 import ImageGallery from '../components/ImageGallery.jsx';
 import AccidentDiagram from '../components/AccidentDiagram.jsx';
@@ -14,6 +14,7 @@ import {
 } from '../lib/utils.js';
 import { translateFuel, translateTrans, translateOption, translateColor } from '../lib/translations.js';
 import { useCountry } from '../contexts/CountryContext.jsx';
+import { fetchInspect } from '../lib/inspectClient.js';
 
 const WHATSAPP    = '38349644168';
 const PHONE       = '+383 49 644 168';
@@ -84,10 +85,9 @@ export default function CarDetail() {
           inspectStarted.current = true;
           obs.disconnect();
           setLoadingInspect(true);
-          fetch(`/api/inspect?id=${id}`)
-            .then(r => r.json())
+          fetchInspect(id)
             .then(data => setInspect(data))
-            .catch(() => setInspect({ apiError: true, damage: null, repairHistory: [], historyAvailable: false }))
+            .catch(() => setInspect({ apiError: true, damage: null, repairHistory: [], historyAvailable: false, internalInspection: [], ownerHistory: [] }))
             .finally(() => setLoadingInspect(false));
         }
       },
@@ -385,6 +385,21 @@ export default function CarDetail() {
                 </div>
               ) : inspect ? (
                 <>
+                  {/* Informacion shpjegues */}
+                  <div className="mb-5 p-4 rounded-xl" style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)' }}>
+                    <p className="text-[10px] uppercase tracking-widest font-mono font-semibold mb-2" style={{ color: '#60a5fa' }}>
+                      Informacion shpjegues
+                    </p>
+                    <ol className="space-y-1 list-decimal list-inside">
+                      <li className="text-xs" style={{ color: 'var(--text-3)' }}>
+                        Ky inspektim nuk është bërë nga kompania jonë por nga pala koreane para se vetura të dalë në shitje. Inspektimi nga kompania jonë bëhet para se klienti ta bëjë blerjen e veturës.
+                      </li>
+                      <li className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>
+                        Të gjitha të dhënat dhe informacionet e paraqitura në këtë raport janë marrë nga burimet e inspektimit dhe kompania jonë i prezanton vetëm për qëllime informuese.
+                      </li>
+                    </ol>
+                  </div>
+
                   <AccidentDiagram damage={inspect.damage} dataAvailable={!inspect.apiError} />
 
                   {inspect.inspectionDate && (
