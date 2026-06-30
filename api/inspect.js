@@ -367,28 +367,35 @@ export default async function handler(req, res) {
   if (!id) return res.status(400).json({ error: 'missing id' });
 
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 9000);
+  const timer = setTimeout(() => ctrl.abort(), 25000);
 
-  // Mirror api/car.js: view endpoint first, list-by-ID as guaranteed fallback
-  const viewUrl = `https://api.encar.com/search/car/view/general?carid=${id}`;
-  const listUrl = `https://api.encar.com/search/car/list/general?${new URLSearchParams({
+  const viewUrl  = `https://api.encar.com/search/car/view/general?carid=${id}`;
+  const inspUrl  = `https://api.encar.com/inspection/view/general?carid=${id}`;
+  const listUrl  = `https://api.encar.com/search/car/list/general?${new URLSearchParams({
     count: 'true',
     q:     `(And.Hidden.N._.Carid.${id}.)`,
     sr:    `|ModifiedDate|0|1`,
     inav:  '|Metadata|Sort',
   })}`;
   const ev = encodeURIComponent(viewUrl);
+  const ei = encodeURIComponent(inspUrl);
   const el = encodeURIComponent(listUrl);
+
+  const unwrapList = d => { const c = d?.SearchResults?.[0]; if (!c) throw new Error('not found'); return c; };
 
   let raw = null;
   try {
     raw = await Promise.any([
-      tryFetch(viewUrl,                                         ctrl.signal        ).then(unwrapCar),
-      tryFetch(`https://api.allorigins.win/get?url=${ev}`,     ctrl.signal, true  ).then(unwrapCar),
-      tryFetch(`https://corsproxy.io/?${ev}`,                  ctrl.signal        ).then(unwrapCar),
-      tryFetch(listUrl,                                         ctrl.signal        ).then(d => { const c = d?.SearchResults?.[0]; if (!c) throw new Error('not found'); return c; }),
-      tryFetch(`https://api.allorigins.win/get?url=${el}`,     ctrl.signal, true  ).then(d => { const c = d?.SearchResults?.[0]; if (!c) throw new Error('not found'); return c; }),
-      tryFetch(`https://corsproxy.io/?${el}`,                  ctrl.signal        ).then(d => { const c = d?.SearchResults?.[0]; if (!c) throw new Error('not found'); return c; }),
+      tryFetch(inspUrl,                                              ctrl.signal        ).then(unwrapCar),
+      tryFetch(viewUrl,                                              ctrl.signal        ).then(unwrapCar),
+      tryFetch(`https://api.allorigins.win/get?url=${ev}`,          ctrl.signal, true  ).then(unwrapCar),
+      tryFetch(`https://corsproxy.io/?${ev}`,                       ctrl.signal        ).then(unwrapCar),
+      tryFetch(`https://thingproxy.freeboard.io/fetch/${viewUrl}`,  ctrl.signal        ).then(unwrapCar),
+      tryFetch(`https://api.allorigins.win/get?url=${ei}`,          ctrl.signal, true  ).then(unwrapCar),
+      tryFetch(`https://corsproxy.io/?${ei}`,                       ctrl.signal        ).then(unwrapCar),
+      tryFetch(listUrl,                                              ctrl.signal        ).then(unwrapList),
+      tryFetch(`https://api.allorigins.win/get?url=${el}`,          ctrl.signal, true  ).then(unwrapList),
+      tryFetch(`https://corsproxy.io/?${el}`,                       ctrl.signal        ).then(unwrapList),
     ]);
   } catch { raw = null; }
 
