@@ -1,4 +1,5 @@
 // Encar inspection / accident report
+import { checkApiKey } from '../src/lib/rateLimit.js';
 const BROWSER_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
   'Accept': 'application/json, text/javascript, */*; q=0.01',
@@ -360,8 +361,10 @@ function extractInternalInspection(raw) {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  if (!await checkApiKey(req, res)) return;
 
   const { id } = req.query;
   if (!id) return res.status(400).json({ error: 'missing id' });
@@ -432,16 +435,4 @@ export default async function handler(req, res) {
   const ownerHistoryCandidates = [
     raw?.OwnerHistory, raw?.CarHistory?.OwnerHistory,
     raw?.CarCondition?.OwnerHistory, raw?.OwnerChanges, raw?.OwnerChangeHistory,
-  ].filter(a => Array.isArray(a) && a.length > 0);
-  const ownerHistory = ownerHistoryCandidates.length === 0 ? [] :
-    ownerHistoryCandidates[0].map(o => ({
-      date: fmtDate(o.Date || o.ChangeDate || o.TransferDate || o.OwnerChangeDate || ''),
-      event: 'Nderrim pronari',
-    })).filter(o => o.date);
-
-  return res.status(200).json({
-    damage: parsed, repairHistory, historyAvailable, inspectionDate,
-    ownerCount, accidentCount, internalInspection, usageHistory, ownerHistory,
-    apiError: false,
-  });
-}
+  ].filter(a => Array.isArray(a)

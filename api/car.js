@@ -1,4 +1,5 @@
 // Single car detail — tries Encar view endpoint, falls back to list search
+import { checkApiKey } from '../src/lib/rateLimit.js';
 const BROWSER_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
   'Accept': 'application/json, text/javascript, */*; q=0.01',
@@ -22,8 +23,10 @@ async function tryFetch(url, signal, isWrapped = false) {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  if (!await checkApiKey(req, res)) return;
 
   const { id } = req.query;
   if (!id) return res.status(400).json({ error: 'missing id' });
@@ -66,7 +69,4 @@ export default async function handler(req, res) {
     clearTimeout(timer);
     return res.status(200).json(data);
   } catch (err) {
-    clearTimeout(timer);
-    return res.status(502).json({ error: 'Could not fetch car detail', detail: err.message });
-  }
-}
+    clearTimeou
