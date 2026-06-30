@@ -106,13 +106,7 @@ export default function AccidentDiagram({ damage, dataAvailable = true }) {
       </div>
 
       {/* Status badge */}
-      {!dataAvailable ? (
-        <div className="flex items-center gap-2 mb-5 py-2.5 px-4 rounded-xl"
-             style={{ background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.2)' }}>
-          <span className="w-2 h-2 rounded-full bg-slate-400 flex-shrink-0" />
-          <span className="text-sm" style={{ color: 'var(--text-3)' }}>Encar nuk ka kthyer raport inspektimi për këtë makinë — shiko direkt në Encar</span>
-        </div>
-      ) : clean ? (
+      {clean || !hasInspection ? (
         <div className="flex items-center gap-2 mb-5 py-2.5 px-4 rounded-xl"
              style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
           <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
@@ -202,3 +196,4 @@ export default function AccidentDiagram({ damage, dataAvailable = true }) {
     </div>
   );
 }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
