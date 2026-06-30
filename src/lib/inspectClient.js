@@ -357,7 +357,7 @@ export async function fetchInspect(id) {
         .catch(() => null)
     );
     attempts.push(
-      fetch(`https://corsproxy.io/?url=${enc}`, { signal: sig })
+      fetch(`https://corsproxy.io/?${enc}`, { signal: sig })
         .then(r => r.ok ? r.json() : null)
         .catch(() => null)
     );
@@ -396,3 +396,4 @@ export async function fetchInspect(id) {
 
   return { damage: parsed, repairHistory, historyAvailable, inspectionDate, ownerCount, accidentCount, internalInspection, usageHistory, ownerHistory, apiError: false };
 }
+    
