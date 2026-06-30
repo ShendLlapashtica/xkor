@@ -58,7 +58,6 @@ export default function CarDetail() {
   const [loadingInspect, setLoadingInspect] = useState(false);
   const [error, setError]       = useState(null);
   const inspectRef      = useRef(null);
-  const inspectStarted  = useRef(false);
   const [openGroups, setOpenGroups] = useState({});
   const [inspModal, setInspModal] = useState(null);
 
@@ -77,25 +76,16 @@ export default function CarDetail() {
   }, [id, car]);
 
   useEffect(() => {
-    inspectStarted.current = false;
-    const el = inspectRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !inspectStarted.current) {
-          inspectStarted.current = true;
-          obs.disconnect();
-          setLoadingInspect(true);
-          fetchInspect(id)
-            .then(data => setInspect(data))
-            .catch(() => setInspect({ apiError: true, damage: null, repairHistory: [], historyAvailable: false, internalInspection: [], ownerHistory: [] }))
-            .finally(() => setLoadingInspect(false));
-        }
-      },
-      { rootMargin: '400px' }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
+    if (!id) return;
+    setLoadingInspect(true);
+    fetchInspect(id)
+      .then(data => setInspect(data))
+      .catch(() => setInspect({
+        apiError: true, damage: null, repairHistory: [],
+        historyAvailable: false, internalInspection: [],
+        ownerHistory: [], usageHistory: null
+      }))
+      .finally(() => setLoadingInspect(false));
   }, [id]);
 
   useEffect(() => {
@@ -353,58 +343,199 @@ export default function CarDetail() {
               </div>
             )}
 
-            {/* ── Inspection Report ── */}
-            {(() => {
-              const inspectionGroups = inspect?.internalInspection || [];
-              const usageHistory     = inspect?.usageHistory || { isRental: false, isCommercial: false };
-              const ownerHistory     = inspect?.ownerHistory || [];
-              const repairHistory    = inspect?.repairHistory || [];
-              const insuranceItems   = repairHistory.filter(h => h.insurance);
-              const insuranceCost    = insuranceItems.reduce((s, h) => s + (Number(h.totalCost) || 0), 0);
-              const diag             = inspect?.diagnosisData || null;
-              const totalItems       = inspectionGroups.reduce((s, g) => s + g.items.length, 0);
-              const defectCount      = inspectionGroups.reduce((s, g) => s + g.items.filter(i => !i.ok).length, 0);
+            {/* ── Raporti i Veturës ── */}
+            <div ref={inspectRef} className="rounded-2xl overflow-hidden"
+                 style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
 
-              const REPORT_LINKS = [
-                { id: 'inspect',   Icon: Settings,      title: 'Kontrolli i Performancës', desc: 'Motor · Transmision · Drejtim · Frena' },
-                { id: 'diagnosis', Icon: ShieldCheck,   title: 'Diagnoza',                 desc: 'Struktura · Panelet · Koment zyrtar' },
-                { id: 'accident',  Icon: AlertTriangle, title: 'Aksidentet',               desc: 'Historia e dëmeve · Sigurimi · Pronarët' },
-              ];
+              {/* Header */}
+              <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-lo)' }}>
+                <h2 className="text-sm font-bold" style={{ color: 'var(--text-1)' }}>
+                  Raporti i Veturës
+                </h2>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-4)' }}>
+                  Inspektim zyrtar · Encar Korea
+                </p>
+              </div>
 
-              return (
-                <div ref={inspectRef} className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                  <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-lo)' }}>
-                    <h2 className="text-sm font-bold" style={{ color: 'var(--text-1)' }}>Raporti i Veturës</h2>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-4)' }}>Inspektim zyrtar · Encar Korea</p>
+              <div className="p-5">
+                {loadingInspect ? (
+                  <div className="flex items-center gap-2 py-8 justify-center"
+                       style={{ color: 'var(--text-3)' }}>
+                    <span className="w-4 h-4 border-2 border-gray-700 border-t-blue-500 rounded-full animate-spin" />
+                    <span className="text-sm">Duke ngarkuar raportin...</span>
                   </div>
-                  {REPORT_LINKS.map((r, i) => {
-                    const { Icon } = r;
-                    return (
-                      <a key={r.id}
-                         href={`https://fem.encar.com/cars/report/${r.id}/${id}`}
-                         target="_blank" rel="noopener noreferrer"
-                         className="flex items-center justify-between px-5 py-4 transition-all"
-                         style={{ borderTop: i > 0 ? '1px solid var(--border-lo)' : 'none', textDecoration: 'none' }}
-                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
-                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                               style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.18)' }}>
-                            <Icon className="w-5 h-5" style={{ color: '#3b82f6' }} />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>{r.title}</p>
-                            <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-4)' }}>{r.desc}</p>
-                          </div>
-                        </div>
-                        <ExternalLink className="w-4 h-4 flex-shrink-0 ml-3" style={{ color: 'var(--text-4)' }} />
-                      </a>
-                    );
-                  })}
-                </div>
-              );
+                ) : (
+                  <>
+                    {/* 1. Accident diagrams */}
+                    <AccidentDiagram
+                      damage={inspect?.damage}
+                      dataAvailable={!inspect?.apiError && inspect?.damage !== null}
+                    />
 
-            })()}
+                    {/* 2. Tab pills */}
+                    <div className="flex gap-2 mt-5 mb-5">
+                      {['Raporti i gjendjes', 'Raporti i sigurimit'].map((label, i) => (
+                        <span key={i} className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                          style={i === 0
+                            ? { background: 'rgba(59,130,246,0.15)', color: '#60a5fa',
+                                border: '1px solid rgba(59,130,246,0.3)' }
+                            : { color: 'var(--text-4)', border: '1px solid var(--border-lo)' }}>
+                          {label}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* 3. Inspektimi i brendshëm — accordion groups */}
+                    {inspect?.internalInspection?.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-xs font-semibold uppercase tracking-widest mb-3"
+                           style={{ color: 'var(--text-3)' }}>
+                          Inspektimi i brendshëm
+                        </p>
+                        <div className="space-y-1">
+                          {inspect.internalInspection.map(group => (
+                            <div key={group.group} className="rounded-xl overflow-hidden"
+                                 style={{ border: '1px solid var(--border-lo)' }}>
+                              <button
+                                onClick={() => setOpenGroups(prev => ({
+                                  ...prev, [group.group]: !prev[group.group]
+                                }))}
+                                className="w-full flex items-center justify-between px-4 py-3"
+                                style={{ background: 'var(--bg-card2)', color: 'var(--text-1)' }}>
+                                <span className="text-sm font-semibold">{group.group}</span>
+                                <ChevronDown
+                                  className={`w-4 h-4 transition-transform ${openGroups[group.group] ? 'rotate-180' : ''}`}
+                                  style={{ color: 'var(--text-3)' }} />
+                              </button>
+                              {openGroups[group.group] && (
+                                <table className="w-full text-xs"
+                                       style={{ background: 'var(--bg-card)' }}>
+                                  <thead>
+                                    <tr style={{ borderTop: '1px solid var(--border-lo)' }}>
+                                      <th className="text-left px-4 py-2 text-[10px] uppercase tracking-wider font-semibold"
+                                          style={{ color: 'var(--text-4)' }}>Pjesa</th>
+                                      <th className="text-right px-4 py-2 text-[10px] uppercase tracking-wider font-semibold"
+                                          style={{ color: 'var(--text-4)' }}>Gjendja</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {group.items.map((item, i) => (
+                                      <tr key={i} style={{ borderTop: '1px solid var(--border-lo)' }}>
+                                        <td className="px-4 py-2.5"
+                                            style={{ color: 'var(--text-3)' }}>{item.name}</td>
+                                        <td className="px-4 py-2.5 text-right font-semibold"
+                                            style={{ color: item.ok ? '#10b981' : '#ef4444' }}>
+                                          {item.status}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 4. Historia e perdorimit te vetures */}
+                    <div className="mt-6">
+                      <p className="text-xs font-semibold uppercase tracking-widest mb-3"
+                         style={{ color: 'var(--text-3)' }}>
+                        Historia e Përdorimit të Veturës
+                      </p>
+                      <div className="rounded-xl overflow-hidden"
+                           style={{ border: '1px solid var(--border-lo)' }}>
+                        {[
+                          { label: 'Përdorur si veturë me qera',
+                            value: inspect?.usageHistory?.isRental ? 'Po' : 'Jo',
+                            bad: inspect?.usageHistory?.isRental },
+                          { label: 'Përdorur për qëllime komerciale',
+                            value: inspect?.usageHistory?.isCommercial ? 'Po' : 'Jo',
+                            bad: inspect?.usageHistory?.isCommercial },
+                        ].map(({ label, value, bad }, i) => (
+                          <div key={i} className="flex items-center justify-between px-4 py-3 text-sm"
+                               style={{ borderTop: i > 0 ? '1px solid var(--border-lo)' : 'none',
+                                        background: 'var(--bg-card2)' }}>
+                            <span style={{ color: 'var(--text-3)' }}>{label}</span>
+                            <span className="font-semibold"
+                                  style={{ color: bad ? '#ef4444' : '#10b981' }}>{value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 5. Historia e nderrimit te pronareve */}
+                    {inspect?.ownerHistory?.length > 0 && (
+                      <div className="mt-6">
+                        <p className="text-xs font-semibold uppercase tracking-widest mb-3"
+                           style={{ color: 'var(--text-3)' }}>
+                          Historia e Ndërrimit të Pronareve
+                        </p>
+                        <div className="rounded-xl overflow-hidden"
+                             style={{ border: '1px solid var(--border-lo)' }}>
+                          {inspect.ownerHistory.map((o, i) => (
+                            <div key={i} className="flex items-center justify-between px-4 py-3 text-sm"
+                                 style={{ borderTop: i > 0 ? '1px solid var(--border-lo)' : 'none',
+                                          background: 'var(--bg-card2)' }}>
+                              <span className="font-mono text-xs"
+                                    style={{ color: 'var(--text-2)' }}>{o.date}</span>
+                              <span style={{ color: 'var(--text-3)' }}>{o.event}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 6. Historia e Serviseve */}
+                    {inspect?.repairHistory?.length > 0 && (
+                      <div className="mt-6">
+                        <p className="text-xs font-semibold uppercase tracking-widest mb-3"
+                           style={{ color: 'var(--text-3)' }}>
+                          Historia e Serviseve · {inspect.repairHistory.length} regjistrim
+                        </p>
+                        <div className="rounded-xl overflow-hidden"
+                             style={{ border: '1px solid var(--border-lo)' }}>
+                          {inspect.repairHistory.map((h, i) => (
+                            <div key={i} className="flex items-center justify-between px-4 py-3"
+                                 style={{ borderTop: i > 0 ? '1px solid var(--border-lo)' : 'none',
+                                          background: 'var(--bg-card2)' }}>
+                              <div>
+                                <span className="font-mono text-xs"
+                                      style={{ color: 'var(--text-2)' }}>{h.date || '—'}</span>
+                                {h.insurance && (
+                                  <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full"
+                                        style={{ background: 'rgba(59,130,246,0.12)',
+                                                 color: '#60a5fa' }}>Sigurim</span>
+                                )}
+                              </div>
+                              <span className="text-xs font-semibold"
+                                    style={{ color: 'var(--text-1)' }}>
+                                {h.totalCost
+                                  ? `${Math.round(Number(h.totalCost)/1450).toLocaleString('de-DE')} €`
+                                  : '—'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Fallback link if no data loaded */}
+                    {inspect?.apiError && (
+                      <div className="mt-4 text-center">
+                        <a href={`https://fem.encar.com/cars/report/inspect/${id}`}
+                           target="_blank" rel="noopener noreferrer"
+                           className="text-xs"
+                           style={{ color: 'var(--text-4)' }}>
+                          Shiko raportin e plotë direkt në Encar ↗
+                        </a>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
         </div>
 
         {/* ── Similar Cars ── */}

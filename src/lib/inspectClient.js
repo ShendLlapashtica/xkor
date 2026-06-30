@@ -394,10 +394,14 @@ export async function fetchInspect(id) {
 
   // 2. Browser-side fallback (user's residential IP bypasses Vercel datacenter blocks)
   //    Run two independent chains: car data + inspection/perform data, then merge.
-  const viewUrl = `https://api.encar.com/search/car/view/general?carid=${id}`;
-  const perfUrl = `https://api.encar.com/inspection/car/perform/${id}`;
-  const ev = encodeURIComponent(viewUrl);
-  const ep = encodeURIComponent(perfUrl);
+  const viewUrl  = `https://api.encar.com/search/car/view/general?carid=${id}`;
+  const perfUrl  = `https://api.encar.com/inspection/car/perform/${id}`;
+  const histUrl1 = `https://api.encar.com/cars/carhistory?carid=${id}`;
+  const histUrl2 = `https://api.encar.com/car/history?carid=${id}`;
+  const ev  = encodeURIComponent(viewUrl);
+  const ep  = encodeURIComponent(perfUrl);
+  const eh1 = encodeURIComponent(histUrl1);
+  const eh2 = encodeURIComponent(histUrl2);
 
   const ctrl  = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 14000);
@@ -420,7 +424,7 @@ export async function fetchInspect(id) {
     return d;
   };
 
-  const [carRes, perfRes] = await Promise.allSettled([
+  const [carRes, perfRes, histRes1, histRes2] = await Promise.allSettled([
     Promise.any([
       guard(ao(ev, ctrl.signal)).then(unwrapCar),
       guard(cp(ev, ctrl.signal)).then(unwrapCar),
@@ -432,20 +436,34 @@ export async function fetchInspect(id) {
       guard(cp(ep, ctrl.signal)).then(unwrapAny),
       guard(tp(perfUrl, ctrl.signal)).then(unwrapAny),
     ]),
+    Promise.any([
+      guard(ao(eh1, ctrl.signal)).then(unwrapAny),
+      guard(cp(eh1, ctrl.signal)).then(unwrapAny),
+      guard(ct(eh1, ctrl.signal)).then(unwrapAny),
+      guard(tp(histUrl1, ctrl.signal)).then(unwrapAny),
+    ]),
+    Promise.any([
+      guard(ao(eh2, ctrl.signal)).then(unwrapAny),
+      guard(cp(eh2, ctrl.signal)).then(unwrapAny),
+      guard(ct(eh2, ctrl.signal)).then(unwrapAny),
+      guard(tp(histUrl2, ctrl.signal)).then(unwrapAny),
+    ]),
   ]);
 
   clearTimeout(timer);
   try { ctrl.abort(); } catch {}
 
-  const carRaw  = carRes.status  === 'fulfilled' ? carRes.value  : null;
-  const perfRaw = perfRes.status === 'fulfilled' ? perfRes.value : null;
+  const carRaw   = carRes.status   === 'fulfilled' ? carRes.value   : null;
+  const perfRaw  = perfRes.status  === 'fulfilled' ? perfRes.value  : null;
+  const histRaw1 = histRes1.status === 'fulfilled' ? histRes1.value : null;
+  const histRaw2 = histRes2.status === 'fulfilled' ? histRes2.value : null;
 
-  if (!carRaw && !perfRaw) return API_ERROR;
+  if (!carRaw && !perfRaw && !histRaw1 && !histRaw2) return API_ERROR;
 
-  // Merge: carRaw base + perfRaw fills missing inspection fields
   const raw = { ...(carRaw || {}) };
-  if (perfRaw) {
-    for (const [k, v] of Object.entries(perfRaw)) {
+  for (const supplement of [histRaw1, histRaw2, perfRaw]) {
+    if (!supplement) continue;
+    for (const [k, v] of Object.entries(supplement)) {
       if (v == null) continue;
       const cur = raw[k];
       if (cur == null || (Array.isArray(cur) && cur.length === 0)) raw[k] = v;
