@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import {
   ArrowLeft, Phone, MessageCircle, Gauge, Calendar, Fuel,
-  Settings, ShieldCheck, MapPin, ExternalLink, Zap, Wind, Car,
+  Settings, Users, ShieldCheck, AlertTriangle, Info, MapPin,
+  ExternalLink, Mail, Zap, Wind, Car, ChevronDown, ChevronRight, X,
 } from 'lucide-react';
 import ImageGallery from '../components/ImageGallery.jsx';
+import AccidentDiagram from '../components/AccidentDiagram.jsx';
 import CarCard from '../components/CarCard.jsx';
 import {
   carYear, manwonToEur, durresPrice, pristinePrice,
@@ -12,6 +14,7 @@ import {
 } from '../lib/utils.js';
 import { translateFuel, translateTrans, translateOption, translateColor } from '../lib/translations.js';
 import { useCountry } from '../contexts/CountryContext.jsx';
+import { fetchInspect } from '../lib/inspectClient.js';
 
 const WHATSAPP    = '38349644168';
 const PHONE       = '+383 49 644 168';
@@ -49,11 +52,15 @@ export default function CarDetail() {
 
   // useState initializer runs fresh on each mount (guaranteed by key={id} in App.jsx)
   const [car, setCar]           = useState(state?.car || null);
+  const [inspect, setInspect]   = useState(null);
   const [similar, setSimilar]   = useState([]);
-  const [loadingCar, setLoadingCar] = useState(!state?.car);
+  const [loadingCar, setLoadingCar]         = useState(!state?.car);
+  const [loadingInspect, setLoadingInspect] = useState(false);
   const [error, setError]       = useState(null);
-  const [reportTab, setReportTab]       = useState('diagnosis');
-  const [iframeLoading, setIframeLoading] = useState(true);
+  const inspectRef      = useRef(null);
+  const inspectStarted  = useRef(false);
+  const [openGroups, setOpenGroups] = useState({});
+  const [inspModal, setInspModal] = useState(null);
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, []);
 
@@ -68,6 +75,28 @@ export default function CarDetail() {
       .catch(e => setError(e.message))
       .finally(() => setLoadingCar(false));
   }, [id, car]);
+
+  useEffect(() => {
+    inspectStarted.current = false;
+    const el = inspectRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !inspectStarted.current) {
+          inspectStarted.current = true;
+          obs.disconnect();
+          setLoadingInspect(true);
+          fetchInspect(id)
+            .then(data => setInspect(data))
+            .catch(() => setInspect({ apiError: true, damage: null, repairHistory: [], historyAvailable: false, internalInspection: [], ownerHistory: [] }))
+            .finally(() => setLoadingInspect(false));
+        }
+      },
+      { rootMargin: '400px' }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [id]);
 
   useEffect(() => {
     if (!car?.Manufacturer) return;
@@ -249,6 +278,33 @@ export default function CarDetail() {
               ))}
             </div>
 
+            {/* Inspection highlight */}
+            {inspect && (inspect.ownerCount != null || inspect.accidentCount != null) && (
+              <div className="flex flex-wrap gap-3">
+                {inspect.ownerCount != null && (
+                  <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm"
+                       style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
+                    <Users className="w-4 h-4" style={{ color: 'var(--text-3)' }} />
+                    <span style={{ color: 'var(--text-2)' }}>
+                      Pronarë: <strong style={{ color: 'var(--text-1)' }}>{inspect.ownerCount}</strong>
+                    </span>
+                  </div>
+                )}
+                {inspect.accidentCount != null && (
+                  <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm border font-medium ${
+                    inspect.accidentCount > 0
+                      ? 'bg-red-900/15 border-red-500/25 text-red-300'
+                      : 'bg-green-900/15 border-green-500/25 text-green-300'
+                  }`}>
+                    <AlertTriangle className="w-4 h-4" />
+                    {inspect.accidentCount > 0
+                      ? `${inspect.accidentCount} aksident i raportuar`
+                      : '✓ Asnjë aksident'}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* ── Specifications ── */}
             <div className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
               <h2 className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: 'var(--text-3)' }}>
@@ -297,74 +353,57 @@ export default function CarDetail() {
               </div>
             )}
 
-            {/* ── Inspection Report Embed ── */}
+            {/* ── Inspection Report ── */}
             {(() => {
-              const REPORT_TABS = [
-                { label: 'Diagnoza e Encar',         path: 'diagnosis' },
-                { label: 'Kontrolli i performancës', path: 'inspect'   },
-                { label: 'Historia e sigurimeve',    path: 'accident'  },
+              const inspectionGroups = inspect?.internalInspection || [];
+              const usageHistory     = inspect?.usageHistory || { isRental: false, isCommercial: false };
+              const ownerHistory     = inspect?.ownerHistory || [];
+              const repairHistory    = inspect?.repairHistory || [];
+              const insuranceItems   = repairHistory.filter(h => h.insurance);
+              const insuranceCost    = insuranceItems.reduce((s, h) => s + (Number(h.totalCost) || 0), 0);
+              const diag             = inspect?.diagnosisData || null;
+              const totalItems       = inspectionGroups.reduce((s, g) => s + g.items.length, 0);
+              const defectCount      = inspectionGroups.reduce((s, g) => s + g.items.filter(i => !i.ok).length, 0);
+
+              const REPORT_LINKS = [
+                { id: 'inspect',   Icon: Settings,      title: 'Kontrolli i Performancës', desc: 'Motor · Transmision · Drejtim · Frena' },
+                { id: 'diagnosis', Icon: ShieldCheck,   title: 'Diagnoza',                 desc: 'Struktura · Panelet · Koment zyrtar' },
+                { id: 'accident',  Icon: AlertTriangle, title: 'Aksidentet',               desc: 'Historia e dëmeve · Sigurimi · Pronarët' },
               ];
-              const iframeSrc = `/api/encar-embed?path=/cars/report/${reportTab}/${id}`;
+
               return (
-                <div style={{
-                  marginTop: '2rem',
-                  borderRadius: '12px',
-                  overflow: 'hidden',
-                  border: '1px solid #e5e7eb',
-                  background: '#fff'
-                }}>
-                  <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
-                    {REPORT_TABS.map(tab => (
-                      <button
-                        key={tab.path}
-                        onClick={() => { setReportTab(tab.path); setIframeLoading(true); }}
-                        style={{
-                          flex: 1,
-                          padding: '14px 8px',
-                          fontSize: '13px',
-                          fontWeight: reportTab === tab.path ? '600' : '400',
-                          color: reportTab === tab.path ? '#111' : '#888',
-                          background: 'none',
-                          border: 'none',
-                          borderBottom: reportTab === tab.path ? '2px solid #111' : '2px solid transparent',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s',
-                          fontFamily: 'inherit',
-                        }}
-                      >
-                        {tab.label}
-                      </button>
-                    ))}
+                <div ref={inspectRef} className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                  <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-lo)' }}>
+                    <h2 className="text-sm font-bold" style={{ color: 'var(--text-1)' }}>Raporti i Veturës</h2>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-4)' }}>Inspektim zyrtar · Encar Korea</p>
                   </div>
-
-                  {iframeLoading && (
-                    <div style={{
-                      height: '80vh', display: 'flex', alignItems: 'center',
-                      justifyContent: 'center', background: '#fafafa'
-                    }}>
-                      <div style={{
-                        width: '28px', height: '28px', border: '2px solid #e5e7eb',
-                        borderTop: '2px solid #111', borderRadius: '50%',
-                        animation: 'spin 0.8s linear infinite'
-                      }} />
-                    </div>
-                  )}
-
-                  <iframe
-                    key={iframeSrc}
-                    src={iframeSrc}
-                    style={{
-                      display: iframeLoading ? 'none' : 'block',
-                      width: '100%',
-                      height: '80vh',
-                      border: 'none',
-                    }}
-                    onLoad={() => setIframeLoading(false)}
-                    title="Raporti Encar"
-                    sandbox="allow-scripts allow-same-origin allow-forms"
-                  />
+                  {REPORT_LINKS.map((r, i) => {
+                    const { Icon } = r;
+                    return (
+                      <a key={r.id}
+                         href={`https://fem.encar.com/cars/report/${r.id}/${id}`}
+                         target="_blank" rel="noopener noreferrer"
+                         className="flex items-center justify-between px-5 py-4 transition-all"
+                         style={{ borderTop: i > 0 ? '1px solid var(--border-lo)' : 'none', textDecoration: 'none' }}
+                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                               style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.18)' }}>
+                            <Icon className="w-5 h-5" style={{ color: '#3b82f6' }} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>{r.title}</p>
+                            <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-4)' }}>{r.desc}</p>
+                          </div>
+                        </div>
+                        <ExternalLink className="w-4 h-4 flex-shrink-0 ml-3" style={{ color: 'var(--text-4)' }} />
+                      </a>
+                    );
+                  })}
                 </div>
               );
+
             })()}
         </div>
 

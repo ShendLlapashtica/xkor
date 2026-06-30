@@ -118,5 +118,3 @@ html.light body {
   to   { transform: translateY(0);    opacity: 1; }
 }
 .animate-slide-up { animation: slide-up 0.25s cubic-bezier(0.16,1,0.3,1) both; }
-
-@keyframes spin { to { transform: rotate(360deg); } }
