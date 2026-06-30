@@ -358,6 +358,65 @@ function extractInternalInspection(raw) {
   return result;
 }
 
+const PANEL_LABEL_MAP = {
+  hood: 'Kapuç', frontBumper: 'Parakolp i përparmë',
+  frontLeftDoor: 'Portë para e majtë', frontRightDoor: 'Portë para e djathtë',
+  rearLeftDoor: 'Portë mbrapa e majtë', rearRightDoor: 'Portë mbrapa e djathtë',
+  rearLeftPanel: 'Panel mbrapa i majtë', rearRightPanel: 'Panel mbrapa i djathtë',
+  trunk: 'Kapaku i bagazhit', rearBumper: 'Parakolp mbrapa',
+  roof: 'Çati', frontLeftFender: 'Parafango para i majtë', frontRightFender: 'Parafango para i djathtë',
+};
+const CODE_LABEL = { N: 'Zëvendësuar', R: 'Riparuar', K: 'Korrozion', G: 'Gërvishtje', P: 'Parregullsi' };
+
+function extractDiagnosisData(raw, damage, accidentCount) {
+  const COMMENT_KEYS = [
+    'SpecialNotes','SpecialNote','Remarks','InspectMemo',
+    'DiagnoseComment','DiagnosisComment','CheckMemo','Comment','PerfMemo','InspectorComment',
+    'MechanicNote','InspectResult',
+  ];
+  let comment = null;
+  for (const k of COMMENT_KEYS) {
+    const v = raw?.[k] ?? raw?.InspectCondition?.[k] ?? raw?.CarCondition?.[k];
+    if (v && typeof v === 'string' && v.trim()) { comment = v.trim(); break; }
+  }
+
+  const FRAME_SOURCES = [
+    raw?.InspectCondition?.Body, raw?.InspectCondition?.Frame,
+    raw?.InspectCondition?.BodyFrame, raw?.Diagnosis?.Frame,
+    raw?.CarCondition?.Frame, raw?.FrameCondition,
+  ].filter(Boolean);
+  const FRAME_FIELD_MAP = {
+    FrontPanel:  'Paneli i Përparmë / i Brendshëm',
+    WheelHouse:  'Strehimi i rrotëve (para/prapa)',
+    PillarPanel: 'Paneli i Shtyllave A/B · Dollapi · Dyshemeja',
+    SidePanel:   'Pragu anësor / Paneli i katërt',
+    RearPanel:   'Paneli i pasmë / Dyshemeja e bagazhit',
+    SideMember:  'Anësor · Tërthor · Tabaka paketimi',
+  };
+  const frameItems = [];
+  for (const src of FRAME_SOURCES) {
+    for (const [key, label] of Object.entries(FRAME_FIELD_MAP)) {
+      if (src[key] !== undefined) {
+        const { status, ok } = translateCondition(src[key]);
+        frameItems.push({ label, status, ok });
+      }
+    }
+    if (frameItems.length) break;
+  }
+
+  const panelItems = Object.entries(PANEL_LABEL_MAP).map(([key, label]) => {
+    const code = damage?.[key] ?? null;
+    return { label, status: code ? (CODE_LABEL[code] || code) : 'normal', ok: !code };
+  });
+
+  return {
+    verdict: (accidentCount ?? 0) === 0 ? 'pa_aksidente' : 'me_aksidente',
+    comment,
+    frameItems,
+    panelItems,
+  };
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -469,9 +528,11 @@ export default async function handler(req, res) {
       event: 'Nderrim pronari',
     })).filter(o => o.date);
 
+  const diagnosisData = extractDiagnosisData(raw, parsed, accidentCount);
+
   return res.status(200).json({
     damage: parsed, repairHistory, historyAvailable, inspectionDate,
     ownerCount, accidentCount, internalInspection, usageHistory, ownerHistory,
-    apiError: false,
+    diagnosisData, apiError: false,
   });
 }
