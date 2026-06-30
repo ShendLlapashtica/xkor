@@ -354,53 +354,7 @@ export default function CarDetail() {
 
             {/* ── Inspection Report ── */}
             {(() => {
-              const DEFAULT_INSPECTION = [
-                { group: 'Motori', items: [
-                  { name: 'Gjendja e funksionimit (në punë boshe)', status: 'Në rregull', ok: true },
-                  { name: 'Rrjedhja e vajit rreth kapakut të kokës së motorit', status: 'Nuk ka rrjedhje', ok: true },
-                  { name: 'Rrjedhja e vajit në kokën e motorit', status: 'Nuk ka rrjedhje', ok: true },
-                  { name: 'Rrjedhja e vajit rreth bllokut dhe karterit të vajit', status: 'Nuk ka rrjedhje', ok: true },
-                  { name: 'Qarkullimi i vajit', status: 'Në rregull', ok: true },
-                  { name: 'Rrjedhja e ujit ftohës nga izoluesi i kokës së motorit', status: 'Nuk ka rrjedhje', ok: true },
-                  { name: 'Rrjedhja e ujit ftohës nga pompa e ujit', status: 'Nuk ka rrjedhje', ok: true },
-                  { name: 'Rrjedhja e ujit ftohës nga radiatori', status: 'Nuk ka rrjedhje', ok: true },
-                  { name: 'Sasia e ujit ftohës (antifreeze)', status: 'Në rregull', ok: true },
-                ]},
-                { group: 'Transmisioni', items: [
-                  { name: 'Rrjedhja e vajit nga transmisioni', status: 'Nuk ka rrjedhje', ok: true },
-                  { name: 'Gjendja e funksionimit (në punë boshe)', status: 'Në rregull', ok: true },
-                  { name: 'Qarkullimi i vajit të transmisionit', status: 'Në rregull', ok: true },
-                  { name: 'Diferenciali', status: 'Në rregull', ok: true },
-                  { name: 'Boshti dhe kushinetat', status: 'Në rregull', ok: true },
-                ]},
-                { group: 'Drejtimi', items: [
-                  { name: 'Rrjedhje e vajit nga koka e timonit', status: 'Nuk ka rrjedhje', ok: true },
-                  { name: 'Ingranazhet drejtuese dhe sistemi elektrik', status: 'Në rregull', ok: true },
-                  { name: 'Nyja e drejtimit', status: 'Në rregull', ok: true },
-                  { name: 'Koka e shufrës së drejtimit dhe nyja sferike', status: 'Në rregull', ok: true },
-                  { name: 'Tubi i presionit të lartë të drejtimit', status: 'Në rregull', ok: true },
-                ]},
-                { group: 'Frenimi', items: [
-                  { name: 'Rrjedhja e vajit nga cilindri kryesor', status: 'Nuk ka rrjedhje', ok: true },
-                  { name: 'Rrjedhja e vajit nga tubat e frenimit', status: 'Nuk ka rrjedhje', ok: true },
-                  { name: 'Gjendja e sistemit të frenimit', status: 'Në rregull', ok: true },
-                ]},
-                { group: 'Elektrika', items: [
-                  { name: 'Alternatori', status: 'Në rregull', ok: true },
-                  { name: 'Startuesi i motorit', status: 'Në rregull', ok: true },
-                  { name: 'Motori i fshësave të xhamave', status: 'Në rregull', ok: true },
-                  { name: 'Motori i ventilatorit të kabinës', status: 'Në rregull', ok: true },
-                  { name: 'Motori i ventilatorit të radiatorit', status: 'Në rregull', ok: true },
-                  { name: 'Motori i xhamave elektrikë', status: 'Në rregull', ok: true },
-                ]},
-                { group: 'Karburanti', items: [
-                  { name: 'Rrjedhja e karburantit', status: 'Nuk ka rrjedhje', ok: true },
-                ]},
-              ];
-
-              const inspectionGroups = inspect?.internalInspection?.length > 0
-                ? inspect.internalInspection
-                : DEFAULT_INSPECTION;
+              const inspectionGroups = inspect?.internalInspection || [];
               const usageHistory = inspect?.usageHistory || { isRental: false, isCommercial: false };
               const ownerHistory = inspect?.ownerHistory || [];
               const repairHistory = inspect?.repairHistory || [];
@@ -448,8 +402,34 @@ export default function CarDetail() {
                       <span className="w-4 h-4 border-2 border-gray-700 border-t-blue-500 rounded-full animate-spin" />
                       Duke ngarkuar raportin...
                     </div>
+                  ) : inspect?.apiError ? (
+                    <div className="py-6 text-center text-sm" style={{ color: 'var(--text-4)' }}>
+                      Të dhënat e inspektimit nuk u ngarkuan nga Encar.{' '}
+                      <a href={`https://fem.encar.com/cars/report/inspect/${id}`}
+                         target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">
+                        Shiko raportin direkt
+                      </a>
+                    </div>
                   ) : (
                     <>
+                      {/* Owner / accident summary pills */}
+                      {(inspect?.ownerCount != null || inspect?.accidentCount != null) && (
+                        <div className="flex gap-3 mb-5 flex-wrap">
+                          {inspect.ownerCount != null && (
+                            <div className="px-4 py-2.5 rounded-xl text-sm" style={{ background: 'var(--bg-card2)', border: '1px solid var(--border-lo)' }}>
+                              <span style={{ color: 'var(--text-3)' }}>Pronarë: </span>
+                              <span className="font-semibold" style={{ color: 'var(--text-1)' }}>{inspect.ownerCount}</span>
+                            </div>
+                          )}
+                          {inspect.accidentCount != null && (
+                            <div className="px-4 py-2.5 rounded-xl text-sm" style={{ background: 'var(--bg-card2)', border: '1px solid var(--border-lo)' }}>
+                              <span style={{ color: 'var(--text-3)' }}>Aksidente: </span>
+                              <span className="font-semibold" style={{ color: inspect.accidentCount > 0 ? '#ef4444' : '#10b981' }}>{inspect.accidentCount}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {/* Accident diagram */}
                       <div className="mb-2">
                         <p className="text-[10px] uppercase tracking-widest font-semibold mb-3" style={{ color: 'var(--text-3)' }}>
@@ -458,37 +438,43 @@ export default function CarDetail() {
                         <AccidentDiagram damage={inspect?.damage} dataAvailable={true} />
                       </div>
 
-                      {/* Internal inspection — always shown, real data or defaults */}
+                      {/* Internal inspection */}
                       <div className="mt-8">
                         <p className="text-[10px] uppercase tracking-widest font-semibold mb-4" style={{ color: 'var(--text-3)' }}>
                           Inspektimi i brendshëm
                         </p>
-                        <div className="space-y-4">
-                          {inspectionGroups.map(group => (
-                            <div key={group.group}>
-                              <p className="text-sm font-bold mb-2" style={{ color: 'var(--text-1)' }}>{group.group}</p>
-                              <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-lo)' }}>
-                                <table className="w-full text-xs">
-                                  <thead>
-                                    <tr style={{ background: 'var(--bg-card2)', borderBottom: '1px solid var(--border-lo)' }}>
-                                      <th className="text-left px-4 py-2 font-semibold text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-4)' }}>Pjesa</th>
-                                      <th className="text-right px-4 py-2 font-semibold text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-4)' }}>Gjendja</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {group.items.map((item, i) => (
-                                      <tr key={i} style={{ borderTop: '1px solid var(--border-lo)' }}>
-                                        <td className="px-4 py-2.5" style={{ color: 'var(--text-3)' }}>{item.name}</td>
-                                        <td className="px-4 py-2.5 text-right font-semibold whitespace-nowrap"
-                                            style={{ color: item.ok ? '#10b981' : '#ef4444' }}>{item.status}</td>
+                        {inspectionGroups.length === 0 ? (
+                          <p className="text-sm py-2" style={{ color: 'var(--text-4)' }}>
+                            Nuk ka të dhëna inspektimi të disponueshme.
+                          </p>
+                        ) : (
+                          <div className="space-y-4">
+                            {inspectionGroups.map(group => (
+                              <div key={group.group}>
+                                <p className="text-sm font-bold mb-2" style={{ color: 'var(--text-1)' }}>{group.group}</p>
+                                <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-lo)' }}>
+                                  <table className="w-full text-xs">
+                                    <thead>
+                                      <tr style={{ background: 'var(--bg-card2)', borderBottom: '1px solid var(--border-lo)' }}>
+                                        <th className="text-left px-4 py-2 font-semibold text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-4)' }}>Pjesa</th>
+                                        <th className="text-right px-4 py-2 font-semibold text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-4)' }}>Gjendja</th>
                                       </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
+                                    </thead>
+                                    <tbody>
+                                      {group.items.map((item, i) => (
+                                        <tr key={i} style={{ borderTop: '1px solid var(--border-lo)' }}>
+                                          <td className="px-4 py-2.5" style={{ color: 'var(--text-3)' }}>{item.name}</td>
+                                          <td className="px-4 py-2.5 text-right font-semibold whitespace-nowrap"
+                                              style={{ color: item.ok ? '#10b981' : '#ef4444' }}>{item.status}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       {/* Historia e Përdorimit */}
