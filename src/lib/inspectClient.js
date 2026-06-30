@@ -396,4 +396,3 @@ export async function fetchInspect(id) {
 
   return { damage: parsed, repairHistory, historyAvailable, inspectionDate, ownerCount, accidentCount, internalInspection, usageHistory, ownerHistory, apiError: false };
 }
-    

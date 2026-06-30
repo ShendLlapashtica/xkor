@@ -609,4 +609,18 @@ export default function CarDetail() {
               </h2>
               <Link
                 to={`/?brand=${encodeURIComponent(manufacturer)}`}
-                className=
+                className="text-sm text-blue-500 hover:text-blue-400 font-medium transition-colors"
+              >
+                Shiko të gjitha →
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {similar.map(c => <CarCard key={c.Id} car={c} />)}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
