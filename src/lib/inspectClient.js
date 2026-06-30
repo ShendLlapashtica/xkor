@@ -321,7 +321,7 @@ const API_ERROR = {
 };
 
 export async function fetchInspect(id) {
-  // 1. Server-side primary (Node.js: no CORS, proper browser headers)
+  // 1. Server-side primary (Node.js: no CORS, proper browser headers, parallel dual-fetch)
   try {
     const r = await fetch(`/api/inspect?id=${id}`);
     if (r.ok) {
@@ -331,50 +331,64 @@ export async function fetchInspect(id) {
   } catch {}
 
   // 2. Browser-side fallback (user's residential IP bypasses Vercel datacenter blocks)
+  //    Run two independent chains: car data + inspection/perform data, then merge.
   const viewUrl = `https://api.encar.com/search/car/view/general?carid=${id}`;
-  const inspUrl = `https://api.encar.com/inspection/view/general?carid=${id}`;
-  const ev  = encodeURIComponent(viewUrl);
-  const ei  = encodeURIComponent(inspUrl);
+  const perfUrl = `https://api.encar.com/inspection/car/perform/${id}`;
+  const ev = encodeURIComponent(viewUrl);
+  const ep = encodeURIComponent(perfUrl);
 
   const ctrl  = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 12000);
+  const timer = setTimeout(() => ctrl.abort(), 14000);
 
-  const ok = p => p.then(v => {
-    if (!v || typeof v !== 'object') throw new Error('null');
-    return v;
-  });
-  const allorigins = (enc, sig) =>
-    fetch(`https://api.allorigins.win/get?url=${enc}`, { signal: sig })
-      .then(r => r.json()).then(o => o?.contents ? JSON.parse(o.contents) : null);
-  const corsproxy = (enc, sig) =>
-    fetch(`https://corsproxy.io/?${enc}`, { signal: sig }).then(r => r.json());
-  const codetabs = (enc, sig) =>
-    fetch(`https://api.codetabs.com/v1/proxy?quest=${enc}`, { signal: sig }).then(r => r.json());
-  const thingproxy = (url, sig) =>
-    fetch(`https://thingproxy.freeboard.io/fetch/${url}`, { signal: sig }).then(r => r.json());
+  const guard = p => p.then(v => { if (!v || typeof v !== 'object') throw new Error('null'); return v; });
+  const ao  = (enc, sig) => fetch(`https://api.allorigins.win/get?url=${enc}`, { signal: sig })
+    .then(r => r.json()).then(o => o?.contents ? JSON.parse(o.contents) : null);
+  const cp  = (enc, sig) => fetch(`https://corsproxy.io/?${enc}`, { signal: sig }).then(r => r.json());
+  const ct  = (enc, sig) => fetch(`https://api.codetabs.com/v1/proxy?quest=${enc}`, { signal: sig }).then(r => r.json());
+  const tp  = (url,  sig) => fetch(`https://thingproxy.freeboard.io/fetch/${url}`, { signal: sig }).then(r => r.json());
 
-  const unwrap = d => {
-    const car = Array.isArray(d?.SearchResults) && d.SearchResults.length > 0
-      ? d.SearchResults[0] : d;
+  const unwrapCar = d => {
+    const car = Array.isArray(d?.SearchResults) && d.SearchResults.length > 0 ? d.SearchResults[0] : d;
     if (!car || typeof car !== 'object') throw new Error('no car');
     return car;
   };
+  const unwrapAny = d => {
+    if (!d || typeof d !== 'object') throw new Error('null');
+    if (Array.isArray(d.SearchResults) && d.SearchResults.length > 0) return d.SearchResults[0];
+    return d;
+  };
 
-  let raw = null;
-  try {
-    raw = await Promise.any([
-      ok(allorigins(ev, ctrl.signal)).then(unwrap),
-      ok(corsproxy(ev, ctrl.signal)).then(unwrap),
-      ok(codetabs(ev, ctrl.signal)).then(unwrap),
-      ok(thingproxy(viewUrl, ctrl.signal)).then(unwrap),
-      ok(allorigins(ei, ctrl.signal)).then(unwrap),
-      ok(corsproxy(ei, ctrl.signal)).then(unwrap),
-    ]);
-  } catch { raw = null; }
+  const [carRes, perfRes] = await Promise.allSettled([
+    Promise.any([
+      guard(ao(ev, ctrl.signal)).then(unwrapCar),
+      guard(cp(ev, ctrl.signal)).then(unwrapCar),
+      guard(ct(ev, ctrl.signal)).then(unwrapCar),
+      guard(tp(viewUrl, ctrl.signal)).then(unwrapCar),
+    ]),
+    Promise.any([
+      guard(ao(ep, ctrl.signal)).then(unwrapAny),
+      guard(cp(ep, ctrl.signal)).then(unwrapAny),
+      guard(tp(perfUrl, ctrl.signal)).then(unwrapAny),
+    ]),
+  ]);
 
   clearTimeout(timer);
   try { ctrl.abort(); } catch {}
 
-  if (!raw) return API_ERROR;
+  const carRaw  = carRes.status  === 'fulfilled' ? carRes.value  : null;
+  const perfRaw = perfRes.status === 'fulfilled' ? perfRes.value : null;
+
+  if (!carRaw && !perfRaw) return API_ERROR;
+
+  // Merge: carRaw base + perfRaw fills missing inspection fields
+  const raw = { ...(carRaw || {}) };
+  if (perfRaw) {
+    for (const [k, v] of Object.entries(perfRaw)) {
+      if (v == null) continue;
+      const cur = raw[k];
+      if (cur == null || (Array.isArray(cur) && cur.length === 0)) raw[k] = v;
+    }
+  }
+
   return parseRaw(raw);
 }

@@ -372,45 +372,72 @@ export default async function handler(req, res) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 25000);
 
-  const viewUrl  = `https://api.encar.com/search/car/view/general?carid=${id}`;
-  const inspUrl  = `https://api.encar.com/inspection/view/general?carid=${id}`;
-  const listUrl  = `https://api.encar.com/search/car/list/general?${new URLSearchParams({
-    count: 'true',
-    q:     `(And.Hidden.N._.Carid.${id}.)`,
-    sr:    `|ModifiedDate|0|1`,
-    inav:  '|Metadata|Sort',
+  const viewUrl = `https://api.encar.com/search/car/view/general?carid=${id}`;
+  const perfUrl = `https://api.encar.com/inspection/car/perform/${id}`;
+  const inspUrl = `https://api.encar.com/inspection/view/general?carid=${id}`;
+  const listUrl = `https://api.encar.com/search/car/list/general?${new URLSearchParams({
+    count: 'true', q: `(And.Hidden.N._.Carid.${id}.)`, sr: `|ModifiedDate|0|1`, inav: '|Metadata|Sort',
   })}`;
+
   const ev = encodeURIComponent(viewUrl);
+  const ep = encodeURIComponent(perfUrl);
   const ei = encodeURIComponent(inspUrl);
   const el = encodeURIComponent(listUrl);
 
+  // Accept any object from perform/inspection endpoints (may or may not have SearchResults wrapper)
+  function unwrapAny(d) {
+    if (!d || typeof d !== 'object') throw new Error('null');
+    if (Array.isArray(d.SearchResults) && d.SearchResults.length > 0) return d.SearchResults[0];
+    return d;
+  }
   const unwrapList = d => { const c = d?.SearchResults?.[0]; if (!c) throw new Error('not found'); return c; };
 
-  let raw = null;
-  try {
-    raw = await Promise.any([
-      tryFetch(inspUrl,                                              ctrl.signal        ).then(unwrapCar),
-      tryFetch(viewUrl,                                              ctrl.signal        ).then(unwrapCar),
-      tryFetch(`https://api.allorigins.win/get?url=${ev}`,          ctrl.signal, true  ).then(unwrapCar),
-      tryFetch(`https://corsproxy.io/?${ev}`,                       ctrl.signal        ).then(unwrapCar),
-      tryFetch(`https://thingproxy.freeboard.io/fetch/${viewUrl}`,  ctrl.signal        ).then(unwrapCar),
-      tryFetch(`https://api.allorigins.win/get?url=${ei}`,          ctrl.signal, true  ).then(unwrapCar),
-      tryFetch(`https://corsproxy.io/?${ei}`,                       ctrl.signal        ).then(unwrapCar),
-      tryFetch(listUrl,                                              ctrl.signal        ).then(unwrapList),
-      tryFetch(`https://api.allorigins.win/get?url=${el}`,          ctrl.signal, true  ).then(unwrapList),
-      tryFetch(`https://corsproxy.io/?${el}`,                       ctrl.signal        ).then(unwrapList),
-    ]);
-  } catch { raw = null; }
+  // Parallel independent fetches:
+  // Chain A → car data from view/list (has OwnerCount, AccidentCount, panel damage)
+  // Chain B → inspection data from perform/inspection (has CarHistryList, InspectCondition)
+  const [carRes, perfRes] = await Promise.allSettled([
+    Promise.any([
+      tryFetch(viewUrl,                                             ctrl.signal        ).then(unwrapCar),
+      tryFetch(`https://api.allorigins.win/get?url=${ev}`,         ctrl.signal, true  ).then(unwrapCar),
+      tryFetch(`https://corsproxy.io/?${ev}`,                      ctrl.signal        ).then(unwrapCar),
+      tryFetch(`https://thingproxy.freeboard.io/fetch/${viewUrl}`, ctrl.signal        ).then(unwrapCar),
+      tryFetch(listUrl,                                             ctrl.signal        ).then(unwrapList),
+      tryFetch(`https://api.allorigins.win/get?url=${el}`,         ctrl.signal, true  ).then(unwrapList),
+      tryFetch(`https://corsproxy.io/?${el}`,                      ctrl.signal        ).then(unwrapList),
+    ]),
+    Promise.any([
+      tryFetch(perfUrl,                                             ctrl.signal        ).then(unwrapAny),
+      tryFetch(`https://api.allorigins.win/get?url=${ep}`,         ctrl.signal, true  ).then(unwrapAny),
+      tryFetch(`https://corsproxy.io/?${ep}`,                      ctrl.signal        ).then(unwrapAny),
+      tryFetch(`https://thingproxy.freeboard.io/fetch/${perfUrl}`, ctrl.signal        ).then(unwrapAny),
+      tryFetch(inspUrl,                                             ctrl.signal        ).then(unwrapAny),
+      tryFetch(`https://api.allorigins.win/get?url=${ei}`,         ctrl.signal, true  ).then(unwrapAny),
+      tryFetch(`https://corsproxy.io/?${ei}`,                      ctrl.signal        ).then(unwrapAny),
+    ]),
+  ]);
 
   clearTimeout(timer);
 
-  if (!raw) {
+  const carRaw  = carRes.status  === 'fulfilled' ? carRes.value  : null;
+  const perfRaw = perfRes.status === 'fulfilled' ? perfRes.value : null;
+
+  if (!carRaw && !perfRaw) {
     return res.status(200).json({
       damage: null, repairHistory: [], historyAvailable: false,
       inspectionDate: null, ownerCount: null, accidentCount: null,
-      internalInspection: [], usageHistory: null, ownerHistory: [],
-      apiError: true,
+      internalInspection: [], usageHistory: null, ownerHistory: [], apiError: true,
     });
+  }
+
+  // Merge: carRaw is base (OwnerCount, panel damage, basic fields).
+  // perfRaw fills in inspection-specific fields only where carRaw has nothing.
+  const raw = { ...(carRaw || {}) };
+  if (perfRaw) {
+    for (const [k, v] of Object.entries(perfRaw)) {
+      if (v == null) continue;
+      const cur = raw[k];
+      if (cur == null || (Array.isArray(cur) && cur.length === 0)) raw[k] = v;
+    }
   }
 
   const conditionData = raw.Inspection || raw.CarCondition || raw.Condition || raw;
@@ -435,4 +462,16 @@ export default async function handler(req, res) {
   const ownerHistoryCandidates = [
     raw?.OwnerHistory, raw?.CarHistory?.OwnerHistory,
     raw?.CarCondition?.OwnerHistory, raw?.OwnerChanges, raw?.OwnerChangeHistory,
-  ].filter(a => Array.isArray(a)
+  ].filter(a => Array.isArray(a) && a.length > 0);
+  const ownerHistory = ownerHistoryCandidates.length === 0 ? [] :
+    ownerHistoryCandidates[0].map(o => ({
+      date: fmtDate(o.Date || o.ChangeDate || o.TransferDate || o.OwnerChangeDate || ''),
+      event: 'Nderrim pronari',
+    })).filter(o => o.date);
+
+  return res.status(200).json({
+    damage: parsed, repairHistory, historyAvailable, inspectionDate,
+    ownerCount, accidentCount, internalInspection, usageHistory, ownerHistory,
+    apiError: false,
+  });
+}
