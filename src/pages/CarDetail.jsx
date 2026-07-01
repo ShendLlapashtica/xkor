@@ -62,6 +62,7 @@ export default function CarDetail() {
   const [inspModal, setInspModal] = useState(null);
   const [accident, setAccident] = useState(null);
   const [loadingAccident, setLoadingAccident] = useState(false);
+  const [reportTab, setReportTab] = useState('gjendja');
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, []);
 
