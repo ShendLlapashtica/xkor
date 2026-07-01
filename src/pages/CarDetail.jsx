@@ -60,6 +60,8 @@ export default function CarDetail() {
   const inspectRef      = useRef(null);
   const [openGroups, setOpenGroups] = useState({});
   const [inspModal, setInspModal] = useState(null);
+  const [accident, setAccident] = useState(null);
+  const [loadingAccident, setLoadingAccident] = useState(false);
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, []);
 
@@ -86,6 +88,16 @@ export default function CarDetail() {
         ownerHistory: [], usageHistory: null
       }))
       .finally(() => setLoadingInspect(false));
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    setLoadingAccident(true);
+    fetch(`/api/accident?id=${id}`)
+      .then(r => r.json())
+      .then(data => setAccident(data))
+      .catch(() => setAccident({ apiError: true, hasRecord: false }))
+      .finally(() => setLoadingAccident(false));
   }, [id]);
 
   useEffect(() => {
@@ -384,18 +396,21 @@ export default function CarDetail() {
                       dataAvailable={!inspect?.apiError && inspect?.damage !== null}
                     />
 
-                    {/* 2. Tab pills */}
+                    {/* 2. Tabs */}
                     <div className="flex gap-2 mt-5 mb-5">
-                      {['Raporti i gjendjes', 'Raporti i sigurimit'].map((label, i) => (
-                        <span key={i} className="px-3 py-1.5 rounded-lg text-xs font-semibold"
-                          style={i === 0
+                      {[['gjendja', 'Raporti i gjendjes'], ['sigurimi', 'Raporti i sigurimit']].map(([key, label]) => (
+                        <button key={key} onClick={() => setReportTab(key)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                          style={reportTab === key
                             ? { background: 'rgba(59,130,246,0.15)', color: '#60a5fa',
                                 border: '1px solid rgba(59,130,246,0.3)' }
                             : { color: 'var(--text-4)', border: '1px solid var(--border-lo)' }}>
                           {label}
-                        </span>
+                        </button>
                       ))}
                     </div>
+
+                    {reportTab === 'gjendja' && (<>
 
                     {/* 3. Inspektimi i brendshëm — accordion groups */}
                     {inspect?.internalInspection?.length > 0 && (
@@ -531,6 +546,90 @@ export default function CarDetail() {
                           ))}
                         </div>
                       </div>
+                    )}
+                    </>)}
+
+                    {/* Raporti i sigurimit (insurance history) */}
+                    {reportTab === 'sigurimi' && (
+                      loadingAccident ? (
+                        <div className="flex items-center gap-2 py-8 justify-center" style={{ color: 'var(--text-3)' }}>
+                          <span className="w-4 h-4 border-2 border-gray-700 border-t-blue-500 rounded-full animate-spin" />
+                          <span className="text-sm">Duke ngarkuar historikun...</span>
+                        </div>
+                      ) : (!accident || accident.apiError || !accident.hasRecord) ? (
+                        <p className="text-sm text-center py-8" style={{ color: 'var(--text-4)' }}>
+                          Nuk ka te dhena sigurimi per kete veture.
+                        </p>
+                      ) : (
+                        <div>
+                          {accident.requestDate && (
+                            <p className="text-center text-xs mb-4" style={{ color: 'var(--text-4)' }}>
+                              Data e kerkeses per informacion &middot; {accident.requestDate}
+                            </p>
+                          )}
+                          <div className="rounded-xl overflow-hidden mb-6" style={{ border: '1px solid var(--border-lo)' }}>
+                            {[
+                              ['Nderrime pronari', `${accident.counts.ownerChange} here`, accident.counts.ownerChange > 0],
+                              ['Nderrime targe', `${accident.counts.carNoChange} here`, accident.counts.carNoChange > 0],
+                              ['Humbje totale / Permbytje / Vjedhje', `${accident.counts.totalLoss} / ${accident.counts.flood} / ${accident.counts.robber}`, (accident.counts.totalLoss + accident.counts.flood + accident.counts.robber) > 0],
+                              ['Aksidente (demtim i kesaj veture)', `${accident.counts.myAccident} here \u00b7 ${accident.costs.myAccident.toLocaleString('de-DE')} \u20a9`, accident.counts.myAccident > 0],
+                              ['Aksidente (demtim automjeti tjeter)', accident.counts.otherAccident > 0 ? `${accident.counts.otherAccident} here \u00b7 ${accident.costs.otherAccident.toLocaleString('de-DE')} \u20a9` : 'nuk ekziston', accident.counts.otherAccident > 0],
+                            ].map(([label, value, bad], i) => (
+                              <div key={i} className="flex items-center justify-between px-4 py-3 text-sm"
+                                   style={{ borderTop: i > 0 ? '1px solid var(--border-lo)' : 'none', background: 'var(--bg-card2)' }}>
+                                <span style={{ color: 'var(--text-3)' }}>{label}</span>
+                                <span className="font-semibold text-right ml-4" style={{ color: bad ? '#ef4444' : '#10b981' }}>{value}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {accident.myAccidents.length > 0 && (
+                            <div className="mb-6">
+                              <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--text-3)' }}>
+                                Demtimi i kesaj veture &middot; {accident.myAccidents.length} regjistrim
+                              </p>
+                              <div className="space-y-2">
+                                {accident.myAccidents.map((a, i) => (
+                                  <div key={i} className="rounded-xl px-4 py-3" style={{ background: 'var(--bg-card2)', border: '1px solid var(--border-lo)' }}>
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="font-mono text-xs" style={{ color: 'var(--text-2)' }}>{a.date}</span>
+                                      <span className="text-xs font-bold" style={{ color: 'var(--text-1)' }}>{(a.totalCost || 0).toLocaleString('de-DE')} \u20a9</span>
+                                    </div>
+                                    <div className="text-[11px] flex flex-wrap gap-x-3 gap-y-0.5" style={{ color: 'var(--text-4)' }}>
+                                      <span>Pjese {(a.partCost || 0).toLocaleString('de-DE')}</span>
+                                      <span>Pune {(a.laborCost || 0).toLocaleString('de-DE')}</span>
+                                      <span>Lyerje {(a.paintingCost || 0).toLocaleString('de-DE')}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {accident.otherAccidents.length > 0 && (
+                            <div className="mb-6">
+                              <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--text-3)' }}>
+                                Perpunuar nga sigurimi i pales tjeter &middot; {accident.otherAccidents.length} regjistrim
+                              </p>
+                              <div className="space-y-2">
+                                {accident.otherAccidents.map((a, i) => (
+                                  <div key={i} className="rounded-xl px-4 py-3" style={{ background: 'var(--bg-card2)', border: '1px solid var(--border-lo)' }}>
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="font-mono text-xs" style={{ color: 'var(--text-2)' }}>{a.date}</span>
+                                      <span className="text-xs font-bold" style={{ color: 'var(--text-1)' }}>{(a.totalCost || 0).toLocaleString('de-DE')} \u20a9</span>
+                                    </div>
+                                    <div className="text-[11px] flex flex-wrap gap-x-3 gap-y-0.5" style={{ color: 'var(--text-4)' }}>
+                                      <span>Pjese {(a.partCost || 0).toLocaleString('de-DE')}</span>
+                                      <span>Pune {(a.laborCost || 0).toLocaleString('de-DE')}</span>
+                                      <span>Lyerje {(a.paintingCost || 0).toLocaleString('de-DE')}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
                     )}
 
                     {/* Fallback link if no data loaded */}
