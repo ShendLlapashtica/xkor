@@ -1,407 +1,224 @@
-// Encar inspection / accident report
+// Encar inspection / accident report — real endpoint, proxy-hardened
+// Endpoint: https://api.encar.com/legacy/usedcar/inspect/{id}
+// Returns structured English-keyed JSON: { master, inner, outer, inspectAccidentSummary, ... }
+// Encar blocks Vercel/datacenter IPs, so we race a direct call against CORS proxies
+// (same resilient pattern as api/cars.js) — first valid response wins, instantly.
+
 import { checkApiKey } from '../src/lib/rateLimit.js';
+
 const BROWSER_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-  'Accept': 'application/json, text/javascript, */*; q=0.01',
+  'Accept': 'application/json, text/plain, */*',
   'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8',
-  'Referer': 'https://www.encar.com/',
-  'Origin': 'https://www.encar.com',
+  'Referer': 'https://fem.encar.com/',
+  'Origin': 'https://fem.encar.com',
 };
-
-// Same pattern as api/car.js — the only proven-working fetch strategy
-async function tryFetch(url, signal, isWrapped = false) {
-  const r = await fetch(url, { signal, headers: isWrapped ? {} : BROWSER_HEADERS });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  const text = await r.text();
-  if (isWrapped) {
-    const outer = JSON.parse(text);
-    if (!outer.contents) throw new Error('no contents');
-    return JSON.parse(outer.contents);
-  }
-  return JSON.parse(text);
-}
-
-// Unwrap search/car/view/general (may return {SearchResults:[car]} or car directly)
-function unwrapCar(d) {
-  if (!d) throw new Error('null');
-  const car = Array.isArray(d.SearchResults) && d.SearchResults.length > 0 ? d.SearchResults[0] : d;
-  if (!car || typeof car !== 'object') throw new Error('no car');
-  return car;
-}
-
-function normalizeCode(raw) {
-  if (!raw || raw === 'X' || raw === 'N' || raw === '0' || raw === 'N/A') return null;
-  const s = String(raw).trim();
-  if (s === 'W' || s === '교환' || s.includes('교환')) return 'N';
-  if (s === 'C' || s === '판금' || s.includes('판금')) return 'R';
-  if (s === 'U' || s === '부식' || s.includes('부식')) return 'K';
-  if (s === 'A' || s === '흠집' || s.includes('흠집')) return 'G';
-  if (s === 'T' || s === '요철' || s.includes('요철')) return 'P';
-  if (s === 'Y') return 'R';
-  return null;
-}
-
-function parseCarCondition(raw) {
-  if (!raw) return null;
-
-  const candidates = [
-    raw?.Exterior,
-    raw?.CarCondition?.Exterior,
-    raw?.Inspection?.Exterior,
-    raw?.CarCondition,
-    raw?.Condition,
-    raw,
-  ].filter(c => c && typeof c === 'object');
-
-  if (!candidates.length) return null;
-
-  const PANEL_KEYS = {
-    frontBumper:      ['FrontBumper', '앞범퍼', 'frontBumper'],
-    hood:             ['Hood', '보닛', 'hood'],
-    frontLeftFender:  ['FrontLeftFender', '앞왼쪽휀더', 'frontLeftFender'],
-    frontRightFender: ['FrontRightFender', '앞오른쪽휀더', 'frontRightFender'],
-    frontLeftDoor:    ['FrontLeftDoor', '앞왼쪽도어', 'frontLeftDoor'],
-    frontRightDoor:   ['FrontRightDoor', '앞오른쪽도어', 'frontRightDoor'],
-    rearLeftDoor:     ['RearLeftDoor', '뒤왼쪽도어', 'rearLeftDoor'],
-    rearRightDoor:    ['RearRightDoor', '뒤오른쪽도어', 'rearRightDoor'],
-    rearLeftPanel:    ['RearLeftFender', 'RearLeftPanel', '뒤왼쪽휀더', 'rearLeftPanel'],
-    rearRightPanel:   ['RearRightFender', 'RearRightPanel', '뒤오른쪽휀더', 'rearRightPanel'],
-    trunk:            ['Trunk', '트렁크', 'trunk'],
-    rearBumper:       ['RearBumper', '뒤범퍼', 'rearBumper'],
-    roof:             ['Roof', '루프', 'roof'],
-  };
-
-  const result = {};
-  let hasAnyKey = false;
-
-  for (const [panelKey, aliases] of Object.entries(PANEL_KEYS)) {
-    let found = null;
-    for (const ext of candidates) {
-      for (const alias of aliases) {
-        if (ext[alias] !== undefined) { found = ext[alias]; break; }
-      }
-      if (found !== undefined && found !== null) break;
-    }
-
-    if (found !== undefined && found !== null) {
-      hasAnyKey = true;
-      if (typeof found === 'string') {
-        result[panelKey] = normalizeCode(found);
-      } else if (typeof found === 'object') {
-        const code =
-          (found.ExchangeYN === 'Y' || found.Exchange === 'Y') ? 'N' :
-          (found.PlatingYN === 'Y'  || found.Plating === 'Y')  ? 'R' :
-          (found.CorrosionYN === 'Y')  ? 'K' :
-          (found.ScarchYN === 'Y')     ? 'G' :
-          (found.UnevenYN === 'Y')     ? 'P' :
-          null;
-        result[panelKey] = code;
-      } else {
-        result[panelKey] = null;
-      }
-    } else {
-      result[panelKey] = null;
-    }
-  }
-
-  return hasAnyKey ? result : null;
-}
-
-const PART_MAP = {
-  '앞범퍼': 'Bufera Përpara', '뒤범퍼': 'Bufera Mbrapa',
-  '보닛': 'Kapuç', '트렁크': 'Bagazh', '루프': 'Çati',
-  '앞왼쪽휀더': 'Parafango Para Majtë', '앞오른쪽휀더': 'Parafango Para Djathas',
-  '앞왼쪽도어': 'Portë Para Majtë', '앞오른쪽도어': 'Portë Para Djathas',
-  '뒤왼쪽도어': 'Portë Mbrapa Majtë', '뒤오른쪽도어': 'Portë Mbrapa Djathas',
-  '뒤왼쪽휀더': 'Panel Mbrapa Majtë', '뒤오른쪽휀더': 'Panel Mbrapa Djathas',
-};
-const WORK_MAP = {
-  '판금': 'Ripare kallaji', '도장': 'Rilyerje', '교환': 'Zëvendësim',
-  '부식': 'Korrozion', '흠집': 'Gërvishtje', '수리': 'Riparim', '복원': 'Rivendosje',
-};
-
-function trMap(s, map) {
-  if (!s) return s;
-  for (const [kr, alb] of Object.entries(map)) {
-    if (String(s).includes(kr)) return alb;
-  }
-  return s;
-}
 
 function fmtDate(raw) {
   if (!raw) return null;
   const s = String(raw).replace(/\D/g, '');
-  if (s.length === 8) return `${s.slice(6,8)}.${s.slice(4,6)}.${s.slice(0,4)}`;
-  if (s.length === 6) return `${s.slice(4,6)}.${s.slice(0,4)}`;
+  if (s.length === 8) return `${s.slice(6, 8)}.${s.slice(4, 6)}.${s.slice(0, 4)}`;
+  if (s.length === 6) return `${s.slice(4, 6)}.${s.slice(0, 4)}`;
   return String(raw);
 }
 
-function extractRepairHistory(raw) {
-  const candidates = [
-    raw?.CarHistryList,
-    raw?.CarHistoryList,
-    raw?.InspectCondition?.CarHistryList,
-    raw?.Inspection?.CarHistryList,
-    raw?.CarCondition?.CarHistryList,
-    raw?.AccidentHistoryList,
-    raw?.HistoryList,
-    raw?.RepairList,
-    raw?.AccidentList,
-  ].filter(a => Array.isArray(a) && a.length > 0);
-
-  const historyAvailable = candidates.length > 0;
-  const list = !historyAvailable ? [] : candidates[0].map(h => {
-    const rawParts = Array.isArray(h.PerfParts || h.Parts || h.PartList) ? (h.PerfParts || h.Parts || h.PartList) : [];
-    return {
-      date: fmtDate(h.PerfDateTime || h.DateTime || h.InsuranceDate || h.Date),
-      type: trMap(h.WorkType || h.AccidentType || h.Type, WORK_MAP) || null,
-      totalCost: h.WorkCost || h.TotalCost || h.RepairCost || h.Cost || null,
-      insurance: h.InsuranceApplyYN === 'Y' || h.Insurance === 'Y',
-      parts: rawParts.map(p => ({
-        part: trMap(p.PartName || p.Name || p.Part || '', PART_MAP) || '—',
-        work: trMap(p.WorkType || p.Work || p.Type || '', WORK_MAP) || '',
-        cost: p.WorkCost || p.Cost || p.Price || null,
-      })),
-    };
-  });
-  return { list, historyAvailable };
+// ── outer panel → normalised damage code ──────────────────────────────────────
+// outer[field] is null | ["CHANGE"] | ["PLATE"] | ["CORROSION"] | ["SCRATCH"] | ["UNEVEN"]
+function outerCode(arr) {
+  if (!arr || !Array.isArray(arr) || arr.length === 0) return null;
+  const v = arr[0];
+  if (v === 'CHANGE' || v === 'EXCHANGE') return 'N';
+  if (v === 'PLATE' || v === 'PLATING') return 'R';
+  if (v === 'CORROSION') return 'K';
+  if (v === 'SCRATCH') return 'G';
+  if (v === 'UNEVEN') return 'P';
+  return null;
 }
 
-// ── Internal inspection (engine, transmission, etc.) ─────────────────────────
-
-const INSPECT_LABELS = {
-  // Engine
-  WorkingStatusAtIdle: 'Gjendja e funksionimit (në punë boshe)',
-  IdleStatus: 'Gjendja e funksionimit (në punë boshe)',
-  OilLeakAroundCylinderHeadCover: 'Rrjedhja e vajit rreth kapakut të kokës së motorit',
-  HeadCoverOilLeak: 'Rrjedhja e vajit rreth kapakut të kokës',
-  OilLeakAroundCylinderHead: 'Rrjedhja e vajit në kokën e motorit',
-  HeadOilLeak: 'Rrjedhja e vajit në kokën e motorit',
-  OilLeakAroundCylinderBlockOilPan: 'Rrjedhja e vajit rreth bllokut dhe karterit të vajit',
-  BlockOilPanOilLeak: 'Rrjedhja e vajit rreth bllokut dhe karterit të vajit',
-  OilCirculation: 'Qarkullimi i vajit',
-  CoolantLeakAroundCylinderHeadGasket: 'Rrjedhja e ujit ftohës nga izoluesi i kokës së motorit',
-  HeadGasketCoolantLeak: 'Rrjedhja e ujit ftohës nga izoluesi i kokës',
-  CoolantLeakAroundWaterPump: 'Rrjedhja e ujit ftohës nga pompa e ujit',
-  WaterPumpCoolantLeak: 'Rrjedhja e ujit ftohës nga pompa e ujit',
-  CoolantLeakAroundRadiator: 'Rrjedhja e ujit ftohës nga radiatori',
-  RadiatorCoolantLeak: 'Rrjedhja e ujit ftohës nga radiatori',
-  CoolantQuantity: 'Sasia e ujit ftohës (antifreeze)',
-  // Transmission
-  TransmissionOilLeak: 'Rrjedhja e vajit nga transmisioni',
-  OilLeak: 'Rrjedhja e vajit',
-  TransmissionOilCirculation: 'Qarkullimi i vajit të transmisionit',
-  Differential: 'Diferenciali',
-  DriveShaftAndBearings: 'Boshti dhe kushinetat',
-  DriveShaftBearings: 'Boshti dhe kushinetat',
-  // Steering
-  SteeringGearboxOilLeak: 'Rrjedhje e vajit nga koka e timonit',
-  GearboxOilLeak: 'Rrjedhje e vajit nga koka e timonit',
-  ElectricSteeringGear: 'Ingranazhet drejtuese dhe sistemi elektrik',
-  ElectricSteering: 'Ingranazhet drejtuese dhe sistemi elektrik',
-  SteeringJoint: 'Nyja e drejtimit',
-  TieRodBallJoint: 'Koka e shufrës së drejtimit dhe nyja sferike',
-  TieRodEndBallJoint: 'Koka e shufrës së drejtimit dhe nyja sferike',
-  HighPressureHose: 'Tubi i presionit të lartë të drejtimit',
-  // Brake
-  MasterCylinderOilLeak: 'Rrjedhja e vajit nga cilindri kryesor',
-  BrakePipeOilLeak: 'Rrjedhja e vajit nga tubat e frenimit',
-  BrakeLineOilLeak: 'Rrjedhja e vajit nga tubat e frenimit',
-  BrakeCondition: 'Gjendja e sistemit të frenimit',
-  BrakingForce: 'Gjendja e sistemit të frenimit',
-  // Electrical
-  Alternator: 'Alternatori',
-  StarterMotor: 'Startuesi i motorit',
-  WiperMotor: 'Motori i fshësave të xhamave',
-  BlowerMotor: 'Motori i ventilatorit të kabinës',
-  InteriorFanMotor: 'Motori i ventilatorit të kabinës',
-  RadiatorFanMotor: 'Motori i ventilatorit të radiatorit',
-  PowerWindowMotor: 'Motori i xhamave elektrikë',
-  WindowMotor: 'Motori i xhamave elektrikë',
-  // Fuel
-  FuelLeak: 'Rrjedhja e karburantit',
-  FuelLeakage: 'Rrjedhja e karburantit',
-};
-
-function translateCondition(val) {
-  if (val === undefined || val === null) return { status: 'Nuk ka', ok: true };
-  const s = String(val).trim();
-  if (s === 'X' || s === '정상' || s === '없음' || s === '0' || s === 'Normal') return { status: 'Në rregull', ok: true };
-  if (s === 'Y' || s === '불량' || s === '있음' || s === '1') return { status: 'Defekt', ok: false };
-  if (s.includes('누유없음') || s.includes('누수없음')) return { status: 'Nuk ka rrjedhje', ok: true };
-  if (s.includes('누유있음')) return { status: 'Ka rrjedhje vaji', ok: false };
-  if (s.includes('누수있음')) return { status: 'Ka rrjedhje uji', ok: false };
-  if (s.includes('정상') || s.includes('없음')) return { status: 'Në rregull', ok: true };
-  if (s.includes('있음') || s.includes('불량')) return { status: 'Defekt', ok: false };
-  return { status: s, ok: true };
+// Map legacy outer keys → our panel key names
+function parseOuter(outer) {
+  if (!outer) return null;
+  const map = {
+    frontBumper:       null,                        // not in outer (it's grade 1 exterior)
+    hood:              outerCode(outer.hood),
+    frontLeftFender:   outerCode(outer.frontFenderLeft),
+    frontRightFender:  outerCode(outer.frontFenderRight),
+    frontLeftDoor:     outerCode(outer.frontDoorLeft),
+    frontRightDoor:    outerCode(outer.frontDoorRight),
+    rearLeftDoor:      outerCode(outer.rearDoorLeft),
+    rearRightDoor:     outerCode(outer.rearDoorRight),
+    rearLeftPanel:     outerCode(outer.quarterPanelLeft),
+    rearRightPanel:    outerCode(outer.quarterPanelRight),
+    trunk:             outerCode(outer.trunkLead),
+    rearBumper:        null,                        // grade 1 exterior
+    roof:              outerCode(outer.roofPanel),
+  };
+  const hasAny = Object.values(map).some(v => v !== null);
+  return hasAny ? map : null;
 }
 
-const GROUP_DEFS = [
+// ── inner → internalInspection groups ─────────────────────────────────────────
+// Values: "GOOD" | "NONE" | "ADEQUATE" | "DEFECT" | "ABNORMAL" | "LEAK" | "EXISTS" | null
+
+function conditionToAlb(val) {
+  if (!val) return { status: 'Nuk ka', ok: true };
+  switch (val) {
+    case 'GOOD':     return { status: 'Në rregull', ok: true };
+    case 'NONE':     return { status: 'Nuk ka rrjedhje', ok: true };
+    case 'ADEQUATE': return { status: 'Adekuate', ok: true };
+    case 'DEFECT':   return { status: 'Defekt', ok: false };
+    case 'ABNORMAL': return { status: 'Jo normal', ok: false };
+    case 'LEAK':     return { status: 'Ka rrjedhje', ok: false };
+    case 'EXISTS':   return { status: 'Ka problem', ok: false };
+    default:         return { status: val, ok: true };
+  }
+}
+
+const INNER_GROUPS = [
   {
-    aliases: ['Engine', 'engine', '원동기'],
     label: 'Motori',
     fields: [
-      ['WorkingStatusAtIdle', 'IdleStatus'],
-      ['OilLeakAroundCylinderHeadCover', 'HeadCoverOilLeak'],
-      ['OilLeakAroundCylinderHead', 'HeadOilLeak'],
-      ['OilLeakAroundCylinderBlockOilPan', 'BlockOilPanOilLeak'],
-      ['OilCirculation'],
-      ['CoolantLeakAroundCylinderHeadGasket', 'HeadGasketCoolantLeak'],
-      ['CoolantLeakAroundWaterPump', 'WaterPumpCoolantLeak'],
-      ['CoolantLeakAroundRadiator', 'RadiatorCoolantLeak'],
-      ['CoolantQuantity'],
+      { key: 'motorOperationStatus',                 name: 'Gjendja e funksionimit (në punë boshe)' },
+      { key: 'motorOilLeakLockerArmCover',           name: 'Rrjedhja e vajit rreth kapakut të kokës' },
+      { key: 'motorOilLeakCylinderHeaderGasket',     name: 'Rrjedhja e vajit në kokën e motorit' },
+      { key: 'motorOilLeakOilFan',                   name: 'Rrjedhja e vajit rreth bllokut dhe karterit' },
+      { key: 'motorOilFlowRate',                     name: 'Qarkullimi i vajit' },
+      { key: 'motorWaterLeakCylinderHeaderGasket',   name: 'Rrjedhja e ujit ftohës nga izoluesi i kokës' },
+      { key: 'motorWaterLeakPump',                   name: 'Rrjedhja e ujit ftohës nga pompa e ujit' },
+      { key: 'motorWaterLeakRadiator',               name: 'Rrjedhja e ujit ftohës nga radiatori' },
+      { key: 'motorWaterLeakCoolingRate',            name: 'Sasia e ujit ftohës (antifreeze)' },
     ],
   },
   {
-    aliases: ['Transmission', 'transmission', '변속기'],
     label: 'Transmisioni',
     fields: [
-      ['TransmissionOilLeak', 'OilLeak'],
-      ['WorkingStatusAtIdle', 'IdleStatus'],
-      ['TransmissionOilCirculation', 'OilCirculation'],
-      ['Differential'],
-      ['DriveShaftAndBearings', 'DriveShaftBearings'],
+      { key: 'transAutoOilLeakage',                  name: 'Rrjedhja e vajit nga transmisioni (auto)' },
+      { key: 'transAutoOilFlowAndCondition',         name: 'Qarkullimi i vajit të transmisionit' },
+      { key: 'transAutoStatus',                      name: 'Gjendja e funksionimit (transmision)' },
+      { key: 'transManualOilLeakage',                name: 'Rrjedhja e vajit (manual)' },
+      { key: 'transManualGearShifting',              name: 'Ndërrimi i marsheve' },
+      { key: 'powerConstantVelocityJoint',           name: 'Nyja CVJ (boshti i vazhdueshëm)' },
+      { key: 'powerWeightedShaftAndBearing',         name: 'Boshti dhe kushinetat' },
+      { key: 'powerDifferentialGear',                name: 'Diferenciali' },
     ],
   },
   {
-    aliases: ['Steering', 'steering', '조향'],
     label: 'Drejtimi',
     fields: [
-      ['SteeringGearboxOilLeak', 'GearboxOilLeak'],
-      ['ElectricSteeringGear', 'ElectricSteering'],
-      ['SteeringJoint'],
-      ['TieRodBallJoint', 'TieRodEndBallJoint'],
-      ['HighPressureHose'],
+      { key: 'steeringPowerOilLeakage',              name: 'Rrjedhje e vajit nga koka e timonit' },
+      { key: 'steeringGear',                         name: 'Ingranazhet drejtuese dhe sistemi elektrik' },
+      { key: 'steeringJoint',                        name: 'Nyja e drejtimit' },
+      { key: 'steeringTieRodEndAndBallJoint',        name: 'Koka e shufrës dhe nyja sferike' },
+      { key: 'steeringPowerHighPressureHose',        name: 'Tubi i presionit të lartë të drejtimit' },
     ],
   },
   {
-    aliases: ['Brake', 'brake', '제동', 'Brakes'],
     label: 'Frenimi',
     fields: [
-      ['MasterCylinderOilLeak'],
-      ['BrakePipeOilLeak', 'BrakeLineOilLeak'],
-      ['BrakeCondition', 'BrakingForce'],
+      { key: 'brakeMasterCylinderOilLeakage',        name: 'Rrjedhja e vajit nga cilindri kryesor' },
+      { key: 'brakeOilLeakage',                      name: 'Rrjedhja e vajit nga tubat e frenimit' },
+      { key: 'brakeSystemStatus',                    name: 'Gjendja e sistemit të frenimit' },
     ],
   },
   {
-    aliases: ['Electrical', 'electrical', '전기', 'Electric'],
     label: 'Elektrika',
     fields: [
-      ['Alternator'],
-      ['StarterMotor'],
-      ['WiperMotor'],
-      ['BlowerMotor', 'InteriorFanMotor'],
-      ['RadiatorFanMotor'],
-      ['PowerWindowMotor', 'WindowMotor'],
+      { key: 'electricGeneratorOutput',              name: 'Alternatori' },
+      { key: 'electricStarterMotor',                 name: 'Startuesi i motorit' },
+      { key: 'electricWiperMotorFunction',           name: 'Motori i fshësave të xhamave' },
+      { key: 'electricIndoorBlowerMotor',            name: 'Motori i ventilatorit të kabinës' },
+      { key: 'electricRadiatorFanMotor',             name: 'Motori i ventilatorit të radiatorit' },
+      { key: 'electricWindowMotor',                  name: 'Motori i xhamave elektrikë' },
     ],
   },
   {
-    aliases: ['Fuel', 'fuel', '연료'],
     label: 'Karburanti',
     fields: [
-      ['FuelLeak', 'FuelLeakage'],
+      { key: 'otherFuelLeaks',                       name: 'Rrjedhja e karburantit' },
     ],
   },
 ];
 
-function extractInternalInspection(raw) {
-  const sources = [
-    raw?.InspectCondition,
-    raw?.InspectionCondition,
-    raw?.Inspection?.InspectCondition,
-    raw?.CarCondition?.InspectCondition,
-    raw?.PerfCheck,
-    raw?.PerformanceCheck,
-    raw?.InspectResults,
-  ].filter(c => c && typeof c === 'object' && !Array.isArray(c));
-
-  if (!sources.length) return [];
-
+function parseInner(inner) {
+  if (!inner) return [];
   const result = [];
-
-  for (const def of GROUP_DEFS) {
-    let groupObj = null;
-    for (const src of sources) {
-      for (const alias of def.aliases) {
-        if (src[alias] && typeof src[alias] === 'object') {
-          groupObj = src[alias];
-          break;
-        }
-      }
-      if (groupObj) break;
+  for (const group of INNER_GROUPS) {
+    const items = [];
+    for (const { key, name } of group.fields) {
+      const val = inner[key];
+      if (val === undefined || val === null) continue;
+      items.push({ name, ...conditionToAlb(val) });
     }
-    if (!groupObj) continue;
-
-    let items = [];
-
-    if (Array.isArray(groupObj)) {
-      items = groupObj.map(item => {
-        const rawName = item.ItemName || item.Name || '';
-        const rawVal  = item.ItemStatus || item.Status || item.Value || 'X';
-        return { name: INSPECT_LABELS[rawName] || rawName, ...translateCondition(rawVal) };
-      }).filter(i => i.name);
-    } else {
-      for (const fieldAliases of def.fields) {
-        let val;
-        for (const f of fieldAliases) {
-          if (groupObj[f] !== undefined) { val = groupObj[f]; break; }
-        }
-        if (val === undefined) continue;
-        const labelKey = fieldAliases.find(f => INSPECT_LABELS[f]);
-        items.push({ name: INSPECT_LABELS[labelKey] || fieldAliases[0], ...translateCondition(val) });
-      }
-    }
-
-    if (items.length) result.push({ group: def.label, items });
+    if (items.length) result.push({ group: group.label, items });
   }
-
   return result;
 }
 
+// ── inspectAccidentSummary → diagnosisData ────────────────────────────────────
 const PANEL_LABEL_MAP = {
-  hood: 'Kapuç', frontBumper: 'Parakolp i përparmë',
-  frontLeftDoor: 'Portë para e majtë', frontRightDoor: 'Portë para e djathtë',
-  rearLeftDoor: 'Portë mbrapa e majtë', rearRightDoor: 'Portë mbrapa e djathtë',
-  rearLeftPanel: 'Panel mbrapa i majtë', rearRightPanel: 'Panel mbrapa i djathtë',
-  trunk: 'Kapaku i bagazhit', rearBumper: 'Parakolp mbrapa',
-  roof: 'Çati', frontLeftFender: 'Parafango para i majtë', frontRightFender: 'Parafango para i djathtë',
+  hood:              'Kapuç',
+  frontBumper:       'Parakolp i përparmë',
+  frontLeftDoor:     'Portë para e majtë',
+  frontRightDoor:    'Portë para e djathtë',
+  rearLeftDoor:      'Portë mbrapa e majtë',
+  rearRightDoor:     'Portë mbrapa e djathtë',
+  rearLeftPanel:     'Panel mbrapa i majtë',
+  rearRightPanel:    'Panel mbrapa i djathtë',
+  trunk:             'Kapaku i bagazhit',
+  rearBumper:        'Parakolp mbrapa',
+  roof:              'Çati',
+  frontLeftFender:   'Parafango para i majtë',
+  frontRightFender:  'Parafango para i djathtë',
 };
+
 const CODE_LABEL = { N: 'Zëvendësuar', R: 'Riparuar', K: 'Korrozion', G: 'Gërvishtje', P: 'Parregullsi' };
 
-function extractDiagnosisData(raw, damage, accidentCount) {
-  const COMMENT_KEYS = [
-    'SpecialNotes','SpecialNote','Remarks','InspectMemo',
-    'DiagnoseComment','DiagnosisComment','CheckMemo','Comment','PerfMemo','InspectorComment',
-    'MechanicNote','InspectResult',
-  ];
-  let comment = null;
-  for (const k of COMMENT_KEYS) {
-    const v = raw?.[k] ?? raw?.InspectCondition?.[k] ?? raw?.CarCondition?.[k];
-    if (v && typeof v === 'string' && v.trim()) { comment = v.trim(); break; }
+function buildDiagnosisData(accidentSummary, damage, outer) {
+  // Main frame items from accident summary
+  const frameItems = [];
+  if (accidentSummary?.mainFrameList?.length > 0) {
+    for (const f of accidentSummary.mainFrameList) {
+      frameItems.push({ label: f.nm || f.name || f, status: 'Ka dëmtim', ok: false });
+    }
   }
 
-  const FRAME_SOURCES = [
-    raw?.InspectCondition?.Body, raw?.InspectCondition?.Frame,
-    raw?.InspectCondition?.BodyFrame, raw?.Diagnosis?.Frame,
-    raw?.CarCondition?.Frame, raw?.FrameCondition,
-  ].filter(Boolean);
-  const FRAME_FIELD_MAP = {
-    FrontPanel:  'Paneli i Përparmë / i Brendshëm',
-    WheelHouse:  'Strehimi i rrotëve (para/prapa)',
-    PillarPanel: 'Paneli i Shtyllave A/B · Dollapi · Dyshemeja',
-    SidePanel:   'Pragu anësor / Paneli i katërt',
-    RearPanel:   'Paneli i pasmë / Dyshemeja e bagazhit',
-    SideMember:  'Anësor · Tërthor · Tabaka paketimi',
+  // Also parse structural outer panels (frame-level)
+  const FRAME_OUTER_KEYS = {
+    frontPanel:          'Paneli i Përparmë / i Brendshëm',
+    crossMember:         'Tërthorja qendrore',
+    insidePanelLeft:     'Paneli i brendshëm majtë',
+    insidePanelRight:    'Paneli i brendshëm djathtë',
+    rearPanel:           'Paneli i pasmë / Dyshemeja e bagazhit',
+    trunkFloor:          'Dyshemeja e bagazhit',
+    frontSideMemberLeft: 'Anësor para majtë',
+    frontSideMemberRight:'Anësor para djathtë',
+    rearSideMemberLeft:  'Anësor mbrapa majtë',
+    rearSideMemberRight: 'Anësor mbrapa djathtë',
+    frontWheelHouseLeft: 'Strehimi rrotës para majtë',
+    frontWheelHouseRight:'Strehimi rrotës para djathtë',
+    rearWheelHouseLeft:  'Strehimi rrotës mbrapa majtë',
+    rearWheelHouseRight: 'Strehimi rrotës mbrapa djathtë',
+    pillarPanelFrontLeft:'Shtylla A majtë',
+    pillarPanelMiddleLeft:'Shtylla B majtë',
+    pillarPanelRearLeft: 'Shtylla C majtë',
+    pillarPanelFrontRight:'Shtylla A djathtë',
+    pillarPanelMiddleRight:'Shtylla B djathtë',
+    pillarPanelRearRight: 'Shtylla C djathtë',
+    packageTray:         'Tabaka paketimi',
+    dashPanel:           'Paneli i instrumenteve',
+    floorPanel:          'Dyshemeja e kabinës',
   };
-  const frameItems = [];
-  for (const src of FRAME_SOURCES) {
-    for (const [key, label] of Object.entries(FRAME_FIELD_MAP)) {
-      if (src[key] !== undefined) {
-        const { status, ok } = translateCondition(src[key]);
-        frameItems.push({ label, status, ok });
+
+  if (outer) {
+    for (const [key, label] of Object.entries(FRAME_OUTER_KEYS)) {
+      const arr = outer[key];
+      if (arr && Array.isArray(arr) && arr.length > 0) {
+        const code = outerCode(arr);
+        if (code) {
+          frameItems.push({ label, status: CODE_LABEL[code] || code, ok: false });
+        }
       }
     }
-    if (frameItems.length) break;
   }
 
   const panelItems = Object.entries(PANEL_LABEL_MAP).map(([key, label]) => {
@@ -409,13 +226,79 @@ function extractDiagnosisData(raw, damage, accidentCount) {
     return { label, status: code ? (CODE_LABEL[code] || code) : 'normal', ok: !code };
   });
 
+  const hasAccident = accidentSummary?.accident === 'EXISTS';
   return {
-    verdict: (accidentCount ?? 0) === 0 ? 'pa_aksidente' : 'me_aksidente',
-    comment,
+    verdict: hasAccident ? 'me_aksidente' : 'pa_aksidente',
+    comment: null,
     frameItems,
     panelItems,
   };
 }
+
+// ── Resilient fetch of the legacy inspect endpoint ────────────────────────────
+// Races a direct call against CORS proxies. A 404 means "no inspection record"
+// (resolves with a sentinel); any other success returns the parsed legacy JSON.
+const NO_INSPECTION = Symbol('no-inspection');
+
+function looksLikeInspect(obj) {
+  return obj && typeof obj === 'object' &&
+    ('master' in obj || 'inner' in obj || 'outer' in obj || 'inspectAccidentSummary' in obj);
+}
+
+async function fetchLegacyInspect(id, signal) {
+  const url = `https://api.encar.com/legacy/usedcar/inspect/${id}`;
+  const enc = encodeURIComponent(url);
+
+  const validate = obj => {
+    if (obj === NO_INSPECTION) return obj;
+    if (!looksLikeInspect(obj)) throw new Error('not an inspect payload');
+    return obj;
+  };
+
+  const direct = async () => {
+    const r = await fetch(url, { headers: BROWSER_HEADERS, signal });
+    if (r.status === 404) return NO_INSPECTION;
+    if (!r.ok) throw new Error(`direct HTTP ${r.status}`);
+    return validate(await r.json());
+  };
+  const allorigins = async () => {
+    const r = await fetch(`https://api.allorigins.win/get?url=${enc}`, { signal });
+    if (!r.ok) throw new Error(`allorigins HTTP ${r.status}`);
+    const o = await r.json();
+    if (o?.status?.http_code === 404) return NO_INSPECTION;
+    if (!o?.contents) throw new Error('allorigins empty');
+    return validate(JSON.parse(o.contents));
+  };
+  const corsproxy = async () => {
+    const r = await fetch(`https://corsproxy.io/?${enc}`, { signal });
+    if (r.status === 404) return NO_INSPECTION;
+    if (!r.ok) throw new Error(`corsproxy HTTP ${r.status}`);
+    return validate(await r.json());
+  };
+  const codetabs = async () => {
+    const r = await fetch(`https://api.codetabs.com/v1/proxy?quest=${enc}`, { signal });
+    if (r.status === 404) return NO_INSPECTION;
+    if (!r.ok) throw new Error(`codetabs HTTP ${r.status}`);
+    return validate(await r.json());
+  };
+
+  return Promise.any([direct(), allorigins(), corsproxy(), codetabs()]);
+}
+
+const NO_INSPECTION_PAYLOAD = {
+  apiError: false,
+  noInspection: true,
+  damage: null,
+  repairHistory: [],
+  historyAvailable: false,
+  inspectionDate: null,
+  ownerCount: null,
+  accidentCount: null,
+  internalInspection: [],
+  usageHistory: { isRental: false, isCommercial: false },
+  ownerHistory: [],
+  diagnosisData: { verdict: 'pa_aksidente', comment: null, frameItems: [], panelItems: [] },
+};
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -429,110 +312,87 @@ export default async function handler(req, res) {
   if (!id) return res.status(400).json({ error: 'missing id' });
 
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 25000);
+  const timer = setTimeout(() => ctrl.abort(), 9000);
 
-  const viewUrl = `https://api.encar.com/search/car/view/general?carid=${id}`;
-  const perfUrl = `https://api.encar.com/inspection/car/perform/${id}`;
-  const inspUrl = `https://api.encar.com/inspection/view/general?carid=${id}`;
-  const listUrl = `https://api.encar.com/search/car/list/general?${new URLSearchParams({
-    count: 'true', q: `(And.Hidden.N._.Carid.${id}.)`, sr: `|ModifiedDate|0|1`, inav: '|Metadata|Sort',
-  })}`;
-
-  const ev = encodeURIComponent(viewUrl);
-  const ep = encodeURIComponent(perfUrl);
-  const ei = encodeURIComponent(inspUrl);
-  const el = encodeURIComponent(listUrl);
-
-  // Accept any object from perform/inspection endpoints (may or may not have SearchResults wrapper)
-  function unwrapAny(d) {
-    if (!d || typeof d !== 'object') throw new Error('null');
-    if (Array.isArray(d.SearchResults) && d.SearchResults.length > 0) return d.SearchResults[0];
-    return d;
-  }
-  const unwrapList = d => { const c = d?.SearchResults?.[0]; if (!c) throw new Error('not found'); return c; };
-
-  // Parallel independent fetches:
-  // Chain A → car data from view/list (has OwnerCount, AccidentCount, panel damage)
-  // Chain B → inspection data from perform/inspection (has CarHistryList, InspectCondition)
-  const [carRes, perfRes] = await Promise.allSettled([
-    Promise.any([
-      tryFetch(viewUrl,                                             ctrl.signal        ).then(unwrapCar),
-      tryFetch(`https://api.allorigins.win/get?url=${ev}`,         ctrl.signal, true  ).then(unwrapCar),
-      tryFetch(`https://corsproxy.io/?${ev}`,                      ctrl.signal        ).then(unwrapCar),
-      tryFetch(`https://thingproxy.freeboard.io/fetch/${viewUrl}`, ctrl.signal        ).then(unwrapCar),
-      tryFetch(listUrl,                                             ctrl.signal        ).then(unwrapList),
-      tryFetch(`https://api.allorigins.win/get?url=${el}`,         ctrl.signal, true  ).then(unwrapList),
-      tryFetch(`https://corsproxy.io/?${el}`,                      ctrl.signal        ).then(unwrapList),
-    ]),
-    Promise.any([
-      tryFetch(perfUrl,                                             ctrl.signal        ).then(unwrapAny),
-      tryFetch(`https://api.allorigins.win/get?url=${ep}`,         ctrl.signal, true  ).then(unwrapAny),
-      tryFetch(`https://corsproxy.io/?${ep}`,                      ctrl.signal        ).then(unwrapAny),
-      tryFetch(`https://thingproxy.freeboard.io/fetch/${perfUrl}`, ctrl.signal        ).then(unwrapAny),
-      tryFetch(inspUrl,                                             ctrl.signal        ).then(unwrapAny),
-      tryFetch(`https://api.allorigins.win/get?url=${ei}`,         ctrl.signal, true  ).then(unwrapAny),
-      tryFetch(`https://corsproxy.io/?${ei}`,                      ctrl.signal        ).then(unwrapAny),
-    ]),
-  ]);
-
-  clearTimeout(timer);
-
-  const carRaw  = carRes.status  === 'fulfilled' ? carRes.value  : null;
-  const perfRaw = perfRes.status === 'fulfilled' ? perfRes.value : null;
-
-  if (!carRaw && !perfRaw) {
+  let data;
+  try {
+    data = await fetchLegacyInspect(id, ctrl.signal);
+  } catch (err) {
+    clearTimeout(timer);
+    const detail = err instanceof AggregateError
+      ? err.errors.map(e => e.message).join(' | ')
+      : err.message;
     return res.status(200).json({
-      damage: null, repairHistory: [], historyAvailable: false,
-      inspectionDate: null, ownerCount: null, accidentCount: null,
-      internalInspection: [], usageHistory: null, ownerHistory: [], apiError: true,
+      apiError: true,
+      damage: null,
+      repairHistory: [],
+      historyAvailable: false,
+      inspectionDate: null,
+      ownerCount: null,
+      accidentCount: null,
+      internalInspection: [],
+      usageHistory: null,
+      ownerHistory: [],
+      diagnosisData: null,
+      _error: detail,
     });
   }
+  clearTimeout(timer);
+  try { ctrl.abort(); } catch {}
 
-  // Merge: carRaw is base (OwnerCount, panel damage, basic fields).
-  // perfRaw fills in inspection-specific fields only where carRaw has nothing.
-  const raw = { ...(carRaw || {}) };
-  if (perfRaw) {
-    for (const [k, v] of Object.entries(perfRaw)) {
-      if (v == null) continue;
-      const cur = raw[k];
-      if (cur == null || (Array.isArray(cur) && cur.length === 0)) raw[k] = v;
-    }
+  if (data === NO_INSPECTION) {
+    return res.status(200).json(NO_INSPECTION_PAYLOAD);
   }
 
-  const conditionData = raw.Inspection || raw.CarCondition || raw.Condition || raw;
-  const parsed = parseCarCondition(conditionData);
-  const { list: repairHistory, historyAvailable } = extractRepairHistory(raw);
-  const internalInspection = extractInternalInspection(raw);
+  const { master, inner, outer, carSaleDto, inspectAccidentSummary } = data;
 
-  const ownerCount    = raw.OwnerCount    ?? raw.OwnerChanges ?? raw.OwnerHistory?.length ?? null;
-  const accidentCount = raw.AccidentCount ?? raw.AccidentHistoryCount ?? null;
-  const inspectionDate = fmtDate(raw.InspectionDate || raw.PerfDate || raw.InspectDate || null);
+  const accidentSummary = inspectAccidentSummary || data.inspectionAccidentSummary;
+  const hasAccident = accidentSummary?.accident === 'EXISTS';
+  const accidentCount = hasAccident ? 1 : 0;
 
-  const src = raw?.CarUsageHistory || raw?.UsageHistory || raw?.CarCondition?.Usage || {};
+  const damage = parseOuter(outer);
+  const internalInspection = parseInner(inner);
+  const inspectionDate = fmtDate(master?.issuedt || master?.rgsdt);
+
+  const carState = carSaleDto?.carAddition;
   const usageHistory = {
-    isRental:     src.TaxiUsedYn === 'Y' || src.RentalUsedYn === 'Y' ||
-                  raw?.IsRentalCar === true || raw?.RentalCar === 'Y' ||
-                  raw?.CarCondition?.TaxiUsedYn === 'Y' || raw?.CarCondition?.RentalUsedYn === 'Y',
-    isCommercial: src.CommercialUsedYn === 'Y' ||
-                  raw?.IsCommercialCar === true || raw?.CommercialCar === 'Y' ||
-                  raw?.CarCondition?.CommercialUsedYn === 'Y',
+    isRental: carState?.carRentType != null || false,
+    isCommercial: carState?.carSaleType === 'COMMERCIAL' || false,
   };
 
-  const ownerHistoryCandidates = [
-    raw?.OwnerHistory, raw?.CarHistory?.OwnerHistory,
-    raw?.CarCondition?.OwnerHistory, raw?.OwnerChanges, raw?.OwnerChangeHistory,
-  ].filter(a => Array.isArray(a) && a.length > 0);
-  const ownerHistory = ownerHistoryCandidates.length === 0 ? [] :
-    ownerHistoryCandidates[0].map(o => ({
-      date: fmtDate(o.Date || o.ChangeDate || o.TransferDate || o.OwnerChangeDate || ''),
-      event: 'Nderrim pronari',
-    })).filter(o => o.date);
-
-  const diagnosisData = extractDiagnosisData(raw, parsed, accidentCount);
+  const diagnosisData = buildDiagnosisData(accidentSummary, damage, outer);
 
   return res.status(200).json({
-    damage: parsed, repairHistory, historyAvailable, inspectionDate,
-    ownerCount, accidentCount, internalInspection, usageHistory, ownerHistory,
-    diagnosisData, apiError: false,
+    apiError: false,
+    noInspection: false,
+    damage,
+    repairHistory: [],
+    historyAvailable: false,
+    inspectionDate,
+    ownerCount: null,
+    accidentCount,
+    internalInspection,
+    usageHistory,
+    ownerHistory: [],
+    diagnosisData,
+    // Extra fields for richer display
+    master: {
+      hasAccident: master?.accyn === 'Y',
+      simpleRepair: master?.simpleRepair === 'Y',
+      mileage: master?.mileage,
+      engineCheck: master?.enginecheck === 'Y',
+      transmissionCheck: master?.trnscheck === 'Y',
+      waterlogged: master?.waterlogyn === 'Y',
+      transmission: master?.transmission,
+      carState: master?.carstate,
+      issueDate: fmtDate(master?.issuedt),
+    },
+    accidentSummary: {
+      accident: accidentSummary?.accident,
+      simpleRepair: accidentSummary?.simpleRepair,
+      exterior1rank: accidentSummary?.exterior1rank,
+      exterior2rank: accidentSummary?.exterior2rank,
+      mainFramework: accidentSummary?.mainFramework,
+    },
   });
 }
